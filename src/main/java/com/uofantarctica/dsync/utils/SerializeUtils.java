@@ -1,6 +1,4 @@
-package com.uofantarctica.utils;
-
-import com.uofantarctica.Rolodex;
+package com.uofantarctica.dsync.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

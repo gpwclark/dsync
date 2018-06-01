@@ -1,4 +1,4 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync;
 
 public interface OnInitialized {
 	void onInitialized();

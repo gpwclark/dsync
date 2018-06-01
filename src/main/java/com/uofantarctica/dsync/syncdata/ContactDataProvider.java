@@ -1,5 +1,6 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync.syncdata;
 
+import com.uofantarctica.dsync.DSync;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.InterestFilter;

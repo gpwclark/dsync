@@ -1,6 +1,9 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync.syncdata;
 
-import com.uofantarctica.utils.SerializeUtils;
+import com.uofantarctica.dsync.DSync;
+import com.uofantarctica.dsync.OnReceivedSyncStates;
+import com.uofantarctica.dsync.model.SyncStates;
+import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.OnData;

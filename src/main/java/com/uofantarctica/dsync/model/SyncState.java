@@ -1,4 +1,4 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync.model;
 
 import lombok.Data;
 

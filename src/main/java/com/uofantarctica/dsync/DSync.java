@@ -1,6 +1,8 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync;
 
-import com.uofantarctica.utils.SerializeUtils;
+import com.uofantarctica.dsync.model.Rolodex;
+import com.uofantarctica.dsync.syncdata.ContactDataFetcher;
+import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;

@@ -1,6 +1,4 @@
-package com.uofantarctica;
-
-import net.named_data.jndn.sync.ChronoSync2013;
+package com.uofantarctica.dsync.model;
 
 import java.io.Serializable;
 import java.util.ArrayList;
