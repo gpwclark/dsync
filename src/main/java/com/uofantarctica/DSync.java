@@ -1,5 +1,6 @@
 package com.uofantarctica;
 
+import com.uofantarctica.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -12,8 +13,11 @@ import net.named_data.jndn.OnRegisterSuccess;
 import net.named_data.jndn.OnTimeout;
 import net.named_data.jndn.security.KeyChain;
 import net.named_data.jndn.security.SecurityException;
+import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,6 +32,9 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final long sessionNo;
 	private final Face face;
 	private final KeyChain keyChain;
+	private final String id;
+	private final Rolodex rolodex;
+	private static final double lifetime = 5000d;
 
 	public DSync(OnReceivedSyncStates onReceivedSyncStates, OnInitialized onInitialized, String dataPrefix, String broadcastPrefix, long sessionNo, Face face, KeyChain keyChain) {
 		this.onReceivedSyncStates = onReceivedSyncStates;
@@ -37,10 +44,12 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		this.sessionNo = sessionNo;
 		this.face = face;
 		this.keyChain = keyChain;
+		this.id = UUID.randomUUID().toString();
 
 		registerBroadcastPrefix();
-		initRolodexInterests();
-		Rolodex rolodex = new Rolodex(dataPrefix);
+		registerDataPrefix();
+		expressInterestInRolodex();
+		rolodex = new Rolodex(id);
 	}
 
 	private void registerBroadcastPrefix() {
@@ -56,7 +65,36 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		}
 	}
 
-	private void initRolodexInterests() {
+	public void expressInterestInRolodex() {
+		Name name = new Name(broadcastPrefix);
+		name.append(getRolodexHash());
+		Interest interest = new Interest(name);
+		interest.setInterestLifetimeMilliseconds(lifetime);
+		expressInterest(interest, this, this);
+	}
+
+	public String getRolodexHash() {
+		int hashCode = rolodex.hashCode();
+		String hash = String.valueOf(hashCode);
+		return hash;
+	}
+
+	public void expressInterestInDataSuffix(String contact, long seq) {
+		Name name = new Name(broadcastPrefix);
+		name.append(contact);
+		Interest interest = new Interest(name);
+		interest.setInterestLifetimeMilliseconds(lifetime);
+		ContactDataFetcher cdp = new ContactDataFetcher(this, onReceivedSyncStates, seq, contact);
+		expressInterest(interest, cdp, cdp);
+	}
+
+	//TODO i think we want some sort of intelligent backoff here and around register prefix.
+	public void expressInterest(Interest interest, OnData onData, OnTimeout onTimeout) {
+		try {
+			face.expressInterest(interest, onData, onTimeout);
+		} catch (IOException e) {
+			log.log(Level.SEVERE, "failed to express interest", e);
+		}
 	}
 
 	@Override
@@ -78,16 +116,52 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	@Override
 	public void onInterest(Name prefix, Interest interest, Face face, long interestFilterId, InterestFilter filter) {
+		if (!matchesCurrentRolodex(interest)) {
+			sendRolodex(interest);
+		}
+	}
 
+	private void sendRolodex(Interest interest) {
+		try {
+			byte[] rolodexSer = new SerializeUtils<Rolodex>().serialize(rolodex);
+			Data data = new Data(interest.getName());
+			Blob content = new Blob(rolodexSer);
+			data.setContent(content);
+			face.putData(data);
+		} catch (IOException e) {
+			log.log(Level.SEVERE, "failed to serialize rolodex.");
+		}
+	}
+
+	private boolean matchesCurrentRolodex(Interest interest) {
+		Name name = interest.getName();
+		String otherRolodexHash = name.get(-1).toEscapedString();
+		return getRolodexHash().equals(otherRolodexHash);
 	}
 
 	@Override
 	public void onData(Interest interest, Data data) {
-
+		Blob content = data.getContent();
+		try {
+			byte[] rolodexSer = content.getImmutableArray();
+			Rolodex newRolodex = Rolodex.deserialize(rolodexSer);
+			List<String> newContacts = rolodex.merge(newRolodex);
+			for (String c : newContacts) {
+				onContactAdded(c);
+			}
+		} catch (IOException e) {
+			log.log(Level.SEVERE, "Error merging rolodexes.", e);
+		} catch (ClassNotFoundException e) {
+			log.log(Level.SEVERE, "Error merging rolodexes.", e);
+		}
 	}
 
 	@Override
 	public void onTimeout(Interest interest) {
+		expressInterestInRolodex();
+	}
 
+	public void onContactAdded(String contact) {
+		expressInterestInDataSuffix(contact, 0l);
 	}
 }

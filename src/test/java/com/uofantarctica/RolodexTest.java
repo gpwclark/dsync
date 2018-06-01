@@ -2,7 +2,6 @@ package com.uofantarctica;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.jupiter.api.BeforeEach;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,10 +14,6 @@ import java.io.ObjectOutputStream;
 import static org.junit.Assert.*;
 
 public class RolodexTest {
-
-	@BeforeEach
-	public void setUp() throws Exception {
-	}
 
 	@Test
 	public void testRolodexSerializeable() throws Exception {
@@ -38,5 +33,9 @@ public class RolodexTest {
 		byte[] rolodexSer = rolodex.serialize();
 		Rolodex matchingRolodex = rolodex.deserialize(rolodexSer);
 		assertEquals(rolodex, matchingRolodex);
+		assertEquals(rolodex.size(), matchingRolodex.size());
+		for (int i = 0; i < rolodex.size(); i++) {
+			assertEquals(rolodex.get(i), matchingRolodex.get(i));
+		}
 	}
 }

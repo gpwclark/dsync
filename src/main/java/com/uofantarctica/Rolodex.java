@@ -1,5 +1,7 @@
 package com.uofantarctica;
 
+import com.uofantarctica.utils.SerializeUtils;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -9,80 +11,82 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Spliterator;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Rolodex implements Serializable {
+public class Rolodex implements Serializable, Iterable<String> {
 	private static final String TAG = Rolodex.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	ArrayList<String> contacts = new ArrayList<>();
+	private List<String> contacts = new ArrayList<>();
 
-	public Rolodex(String dataPrefix) {
-		contacts.add(dataPrefix);
+	public Rolodex(String contact) {
+		contacts.add(contact);
 	}
 
-	public void add(String newDataPrefix) {
-		contacts.add(newDataPrefix);
+	public void add(String contact) {
+		contacts.add(contact);
+		log.log(Level.INFO, "New contact added: " + contact);
 	}
 
 	public byte[] serialize() throws IOException {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		ObjectOutput out = null;
-		try {
-			out = new ObjectOutputStream(bos);
-			out.writeObject(this);
-			out.flush();
-			byte[] bytes = bos.toByteArray();
-			return bytes;
-		} catch (IOException e) {
-			log.log(Level.SEVERE, "failed to serialize rolodex.", e);
-			throw e;
-		} finally {
-			try {
-				bos.close();
-			} catch (IOException ex) {
-				// ignore close exception
+		return new SerializeUtils<Rolodex>().serialize(this);
+	}
+
+	public static Rolodex deserialize(byte[] rolodexSer) throws IOException, ClassNotFoundException {
+		return new SerializeUtils<Rolodex>().deserialize(rolodexSer);
+
+	}
+
+	public List<String> merge(Rolodex newRolodex) {
+		List<String> newContacts = new ArrayList<>();
+		for (String contact : newRolodex) {
+			if (!contacts.contains(contact)) {
+				this.add(contact);
+				newContacts.add(contact);
 			}
 		}
+		return newContacts;
+	}
+
+	@Override
+	public Iterator<String> iterator() {
+		return contacts.iterator();
+	}
+
+	@Override
+	public void forEach(Consumer<? super String> action) {
+		contacts.forEach(action);
+	}
+
+	@Override
+	public Spliterator<String> spliterator() {
+		return contacts.spliterator();
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		Rolodex rolodex = (Rolodex) o;
-		return Objects.equals(contacts, rolodex.contacts);
+		Rolodex strings = (Rolodex) o;
+		return Objects.equals(contacts, strings.contacts);
 	}
 
 	@Override
 	public int hashCode() {
-
 		return Objects.hash(contacts);
 	}
 
-	public Rolodex deserialize(byte[] rolodexSer) throws IOException, ClassNotFoundException {
-		ByteArrayInputStream bis
-			= new ByteArrayInputStream(rolodexSer);
-		ObjectInput in = null;
-		try {
-			in = new ObjectInputStream(bis);
-			Object o = in.readObject();
-			return (Rolodex)o;
-		} catch (Exception e) {
-			log.log(Level.SEVERE, "failed to deserialize rolodex.", e);
-			throw e;
-		} finally {
-			try {
-				if (in != null) {
-					in.close();
-				}
-			} catch (IOException ex) {
-				// ignore close exception
-			}
-		}
+	public int size() {
+		return contacts.size();
+	}
 
+	public String get(int i) {
+		return contacts.get(i);
 	}
 }
