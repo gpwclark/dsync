@@ -14,15 +14,16 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ContactDataFetcher implements OnData, OnTimeout {
-	private static final String TAG = ContactDataFetcher.class.getName();
+public class ContactDataReceiver implements OnData, OnTimeout {
+	private static final String TAG = ContactDataReceiver.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
+
 	private final long seq;
 	private final String contact;
 	private final DSync dsync;
 	private final OnReceivedSyncStates onReceivedSyncStates;
 
-	public ContactDataFetcher(DSync dsync, OnReceivedSyncStates onReceivedSyncStates, long seq, String contact) {
+	public ContactDataReceiver(DSync dsync, OnReceivedSyncStates onReceivedSyncStates, long seq, String contact) {
 		this.dsync = dsync;
 		this.onReceivedSyncStates = onReceivedSyncStates;
 		this.seq = seq;

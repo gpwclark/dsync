@@ -1,7 +1,10 @@
 package com.uofantarctica.dsync;
 
 import com.uofantarctica.dsync.model.Rolodex;
-import com.uofantarctica.dsync.syncdata.ContactDataFetcher;
+import com.uofantarctica.dsync.model.SyncState;
+import com.uofantarctica.dsync.model.SyncStateBox;
+import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
+import com.uofantarctica.dsync.syncdata.ContactDataRequester;
 import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
@@ -37,6 +40,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final String id;
 	private final Rolodex rolodex;
 	private static final double lifetime = 5000d;
+	private final SyncStateBox outbox;
 
 	public DSync(OnReceivedSyncStates onReceivedSyncStates, OnInitialized onInitialized, String dataPrefix, String broadcastPrefix, long sessionNo, Face face, KeyChain keyChain) {
 		this.onReceivedSyncStates = onReceivedSyncStates;
@@ -48,10 +52,16 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		this.keyChain = keyChain;
 		this.id = UUID.randomUUID().toString();
 
+		this.outbox = new SyncStateBox();
+
 		registerBroadcastPrefix();
 		registerDataPrefix();
 		expressInterestInRolodex();
 		rolodex = new Rolodex(id);
+	}
+
+	public void publishNextSeqNo() {
+		outbox.publishNextSyncState();
 	}
 
 	private void registerBroadcastPrefix() {
@@ -60,6 +70,20 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 				(OnInterestCallback) this,
 				(OnRegisterFailed)this,
 				(OnRegisterSuccess)this);
+		} catch (IOException e) {
+			log.log(Level.SEVERE, "Failed to register prefix.", e);
+		} catch (SecurityException e) {
+			log.log(Level.SEVERE, "Failed to register prefix.", e);
+		}
+	}
+
+	private void registerDataPrefix() {
+		try {
+			ContactDataRequester cdr = new ContactDataRequester(outbox);
+		face.registerPrefix(new Name(dataPrefix + "/" + sessionNo + "/" + id),
+			(OnInterestCallback) cdr,
+			(OnRegisterFailed)cdr,
+			(OnRegisterSuccess)cdr);
 		} catch (IOException e) {
 			log.log(Level.SEVERE, "Failed to register prefix.", e);
 		} catch (SecurityException e) {
@@ -82,11 +106,10 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	}
 
 	public void expressInterestInDataSuffix(String contact, long seq) {
-		Name name = new Name(broadcastPrefix);
-		name.append(contact);
+		Name name = SyncState.makeSyncStateName(dataPrefix + "/" + sessionNo, contact, seq);
 		Interest interest = new Interest(name);
 		interest.setInterestLifetimeMilliseconds(lifetime);
-		ContactDataFetcher cdp = new ContactDataFetcher(this, onReceivedSyncStates, seq, contact);
+		ContactDataReceiver cdp = new ContactDataReceiver(this, onReceivedSyncStates, seq, contact);
 		expressInterest(interest, cdp, cdp);
 	}
 
