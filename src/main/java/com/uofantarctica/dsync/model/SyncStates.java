@@ -1,17 +1,26 @@
 package com.uofantarctica.dsync.model;
 
+import lombok.Data;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
 public class SyncStates implements Serializable, Iterable<SyncState> {
-	List<SyncState> syncStates = new ArrayList<>();
+	private final List<SyncState> syncStates = new ArrayList<>();
+	private final String dataPrefix;
 
-	public SyncStates(SyncState s) {
+	public SyncStates(String dataPrefix) {
+		this.dataPrefix = dataPrefix;
+	}
+
+	public SyncStates(SyncState s, String dataPrefix) {
 		syncStates.add(s);
+		this.dataPrefix = dataPrefix;
 	}
 
 	public void add(SyncState s) {
@@ -41,7 +50,24 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 		return syncStates.spliterator();
 	}
 
-	public List<SyncState> getSyncStates() {
-		return syncStates;
+	public boolean contains(SyncState s) {
+		return syncStates.contains(s);
+	}
+
+	public String getDataPrefix() {
+		return dataPrefix;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		SyncStates that = (SyncStates) o;
+		return Objects.equals(syncStates, that.syncStates);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(syncStates);
 	}
 }

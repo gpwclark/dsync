@@ -1,16 +1,14 @@
 package com.uofantarctica.dsync.syncdata;
 
 import com.uofantarctica.dsync.DSync;
-import com.uofantarctica.dsync.OnReceivedSyncStates;
-import com.uofantarctica.dsync.model.SyncStates;
-import com.uofantarctica.dsync.utils.SerializeUtils;
+import com.uofantarctica.dsync.DSyncReporting;
+import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
+import net.named_data.jndn.Name;
 import net.named_data.jndn.OnData;
 import net.named_data.jndn.OnTimeout;
-import net.named_data.jndn.util.Blob;
 
-import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,35 +16,38 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 	private static final String TAG = ContactDataReceiver.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private final long seq;
-	private final String contact;
 	private final DSync dsync;
-	private final OnReceivedSyncStates onReceivedSyncStates;
+	private final OnData onData;
+	private final SyncState s;
+	private final DSyncReporting dSyncReporting;
 
-	public ContactDataReceiver(DSync dsync, OnReceivedSyncStates onReceivedSyncStates, long seq, String contact) {
+	public ContactDataReceiver(DSync dsync, OnData onData, SyncState s, DSyncReporting dSyncReporting) {
 		this.dsync = dsync;
-		this.onReceivedSyncStates = onReceivedSyncStates;
-		this.seq = seq;
-		this.contact = contact;
+		this.onData = onData;
+		this.s = s;
+		this.dSyncReporting = dSyncReporting;
 	}
 
 	@Override
 	public void onData(Interest interest, Data data) {
-		Blob content = data.getContent();
-		byte[] bytes = content.getImmutableArray();
 		try {
-			SyncStates ss = new SerializeUtils<SyncStates>().deserialize(bytes);
-			onReceivedSyncStates.onReceivedSyncStates(ss.getSyncStates());
-			dsync.expressInterestInDataSuffix(contact, seq + 1);
-		} catch (IOException e) {
-			log.log(Level.SEVERE, "failed to deserialize sync states.", e);
-		} catch (ClassNotFoundException e) {
-			log.log(Level.SEVERE, "failed to deserialize sync states.", e);
+			dSyncReporting.onDataPrefixOnData(interest, data);
+			s.incSyncState();
+			dsync.expressInterestInDataSuffix(s);
+			onData.onData(interest, data);
+		}
+		catch (Exception e) {
+			log.log(Level.SEVERE, "Error in ContactDataReceiver onData");
 		}
 	}
 
 	@Override
 	public void onTimeout(Interest interest) {
-		dsync.expressInterestInDataSuffix(contact, seq);
+		try {
+			dsync.expressInterestInDataSuffix(s);
+		}
+		catch (Exception e) {
+			log.log(Level.SEVERE, "Error in ContactDataReceiver onTimeout");
+		}
 	}
 }

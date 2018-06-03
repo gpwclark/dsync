@@ -7,12 +7,28 @@ version '1.0-SNAPSHOT'
 
 sourceCompatibility = 1.8
 
+apply plugin: 'maven-publish'
+
 repositories {
     mavenCentral()
+    jcenter()
+    maven { url "https://jitpack.io" }
 }
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     compile 'net.named-data:jndn:0.17'
     compile 'org.projectlombok:lombok:1.16.22'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId 'com.uofantarctica'
+            artifactId 'dsync'
+            version '0.1'
+
+            from components.java
+        }
+    }
 }

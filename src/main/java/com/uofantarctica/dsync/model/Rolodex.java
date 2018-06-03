@@ -1,6 +1,9 @@
 package com.uofantarctica.dsync.model;
 
+import com.uofantarctica.dsync.DSyncReporting;
 import com.uofantarctica.dsync.utils.SerializeUtils;
+import net.named_data.jndn.Interest;
+import net.named_data.jndn.Name;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -13,19 +16,40 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class Rolodex implements Serializable, Iterable<String> {
+public class Rolodex implements Serializable, Iterable<SyncState> {
 	private static final String TAG = Rolodex.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private List<String> contacts = new ArrayList<>();
+	private SyncStates syncStates;
+	private transient DSyncReporting dSyncReporting;
 
-	public Rolodex(String contact) {
-		contacts.add(contact);
+	public Rolodex(SyncState myInitialSyncState, String theDataPrefix, DSyncReporting dSyncReporting) {
+		syncStates = new SyncStates(theDataPrefix);
+		this.dSyncReporting = dSyncReporting;
+		this.add(myInitialSyncState);
 	}
 
-	public void add(String contact) {
-		contacts.add(contact);
-		log.log(Level.INFO, "New contact added: " + contact);
+	public boolean matchesCurrentRolodex(Interest interest) {
+		Name name = interest.getName();
+		String otherRolodexHash = name.get(-1).toEscapedString();
+		String thisRolodexHash = getRolodexHashString();
+		return thisRolodexHash.equals(otherRolodexHash);
+	}
+
+	public String getRolodexHashString() {
+		int hashCode = this.hashCode();
+		String hash = String.valueOf(hashCode);
+		return hash;
+	}
+
+
+	public String getDataPrefix() {
+		return syncStates.getDataPrefix();
+	}
+
+	public void add(SyncState s) {
+		syncStates.add(s);
+		dSyncReporting.onContactAdditionInRolodex(s, this.hashCode());
 	}
 
 	public byte[] serialize() throws IOException {
@@ -34,53 +58,61 @@ public class Rolodex implements Serializable, Iterable<String> {
 
 	public static Rolodex deserialize(byte[] rolodexSer) throws IOException, ClassNotFoundException {
 		return new SerializeUtils<Rolodex>().deserialize(rolodexSer);
-
 	}
 
-	public List<String> merge(Rolodex newRolodex) {
-		List<String> newContacts = new ArrayList<>();
-		for (String contact : newRolodex) {
-			if (!contacts.contains(contact)) {
-				this.add(contact);
-				newContacts.add(contact);
+	public SyncStates merge(Rolodex newRolodex) {
+		SyncStates newContacts = new SyncStates(newRolodex.getDataPrefix());
+		for (SyncState s : newRolodex) {
+			if (!syncStates.contains(s)) {
+				s.setSeq(0l);
+				this.add(s);
+				newContacts.add(s);
 			}
 		}
 		return newContacts;
 	}
 
 	@Override
-	public Iterator<String> iterator() {
-		return contacts.iterator();
+	public Iterator<SyncState> iterator() {
+		return syncStates.iterator();
 	}
 
 	@Override
-	public void forEach(Consumer<? super String> action) {
-		contacts.forEach(action);
+	public void forEach(Consumer<? super SyncState> action) {
+		syncStates.forEach(action);
 	}
 
 	@Override
-	public Spliterator<String> spliterator() {
-		return contacts.spliterator();
+	public Spliterator<SyncState> spliterator() {
+		return syncStates.spliterator();
+	}
+
+	public int size() {
+		return syncStates.size();
+	}
+
+	public SyncState get(int i) {
+		return syncStates.get(i);
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		Rolodex strings = (Rolodex) o;
-		return Objects.equals(contacts, strings.contacts);
+		Rolodex that = (Rolodex) o;
+		return Objects.equals(syncStates, that.syncStates);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(contacts);
+		return Objects.hash(syncStates);
 	}
 
-	public int size() {
-		return contacts.size();
-	}
-
-	public String get(int i) {
-		return contacts.get(i);
+	@Override
+	public String toString() {
+		return "Rolodex{" +
+			"syncStates=" + syncStates +
+			'}';
 	}
 }
+

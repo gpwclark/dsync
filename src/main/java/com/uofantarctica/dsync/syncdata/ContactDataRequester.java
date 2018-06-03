@@ -1,9 +1,7 @@
 package com.uofantarctica.dsync.syncdata;
 
-import com.uofantarctica.dsync.model.SyncState;
-import com.uofantarctica.dsync.model.SyncStateBox;
-import com.uofantarctica.dsync.model.SyncStates;
-import com.uofantarctica.dsync.utils.SerializeUtils;
+import com.uofantarctica.dsync.DSyncReporting;
+import com.uofantarctica.dsync.model.ChatMessageBox;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -12,7 +10,6 @@ import net.named_data.jndn.Name;
 import net.named_data.jndn.OnInterestCallback;
 import net.named_data.jndn.OnRegisterFailed;
 import net.named_data.jndn.OnRegisterSuccess;
-import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
 import java.util.logging.Level;
@@ -22,30 +19,27 @@ public class ContactDataRequester implements OnInterestCallback, OnRegisterFaile
 	private static final String TAG = ContactDataRequester.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private final SyncStateBox outbox;
+	private final ChatMessageBox outbox;
+	private final DSyncReporting dSyncReporting;
 
-	public ContactDataRequester(SyncStateBox outbox) {
+	public ContactDataRequester(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
 		this.outbox = outbox;
+		this.dSyncReporting = dSyncReporting;
 	}
 
 	@Override
 	public void onInterest(Name prefix, Interest interest, Face face, long interestFilterId, InterestFilter filter) {
-		if (outbox.canSatisfy(interest)) {
-			SyncStates ss = outbox.getSyncStatesFromInterest(interest);
-			byte[] bytes;
+		if (outbox.shouldRespond(interest)) {
+			dSyncReporting.onDataPrefixShouldRespondInterest(interest);
+			Data data = outbox.getDataForInterest(interest);
 			try {
-				bytes = new SerializeUtils<SyncStates>().serialize(ss);
-				Blob content = new Blob(bytes);
-				Data data = new Data(interest.getName());
-				data.setContent(content);
-				try {
-					face.putData(data);
-				} catch (IOException e) {
-					log.log(Level.SEVERE, "Failed to place message on interest." + interest.toUri());
-				}
+				face.putData(data);
 			} catch (IOException e) {
-				e.printStackTrace();
+				log.log(Level.SEVERE, "Failed to place message on interest." + interest.toUri());
 			}
+		}
+		else {
+			dSyncReporting.onDataPrefixShouldNotRespondInterest(interest);
 		}
 	}
 
