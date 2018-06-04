@@ -15,25 +15,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class RolodexTest {
 	Rolodex rolodex;
+	Rolodex otherRolodex;
 	String dataPrefix = "/ndn/com/uofantarctica/dsync";
 	long defaultSeq = 0l;
+	String uuid = UUID.randomUUID().toString();
 	Name name1 = new Name(dataPrefix)
-		.append(UUID.randomUUID().toString())
+		.append("1" + uuid)
 		.append(Long.toString(1l))
 		.append(Long.toString(defaultSeq));
-	Interest interest1 = new Interest(name1);
 
 	Name name2 = new Name(dataPrefix)
-		.append(UUID.randomUUID().toString())
+		.append("2" + uuid)
 		.append(Long.toString(2l))
 		.append(Long.toString(defaultSeq));
-	Interest interest2 = new Interest(name2);
 
 	Name name3 = new Name(dataPrefix)
-		.append(UUID.randomUUID().toString())
+		.append("3" + uuid)
 		.append(Long.toString(3l))
 		.append(Long.toString(defaultSeq));
-	Interest interest3 = new Interest(name3);
+
+	Interest interest1;
+	Interest interest2;
+	Interest interest3;
 
 	public Rolodex makeNewRolodexWithSeededData() {
 		SyncState s1 = new SyncState(interest1);
@@ -57,8 +60,11 @@ public class RolodexTest {
 
 	@BeforeEach
 	void setUp() {
+		interest1 = new Interest(name1);
+		interest2 = new Interest(name2);
+		interest3 = new Interest(name3);
 		rolodex = makeNewRolodexWithSeededData();
-
+		otherRolodex = makeNewRolodexWithDifferentlyOdderedSeededData();
 	}
 
 	@AfterEach
@@ -68,10 +74,7 @@ public class RolodexTest {
 
 	@Test
 	public void testRolodexesWithSameContentsEqual() {
-		Rolodex rolodex1 = makeNewRolodexWithDifferentlyOdderedSeededData();
-		Rolodex rolodex2 = makeNewRolodexWithSeededData();
-		assertEquals(true, rolodex2.equals(rolodex1));
-		assertEquals(rolodex1, rolodex2);
+		assertEquals(otherRolodex, rolodex);
 	}
 
 	@Test
@@ -86,9 +89,8 @@ public class RolodexTest {
 		testRolodexesWithSameContentsEqual();
 		byte[] rolodexSer = rolodex.serialize();
 		Rolodex matchingRolodex = rolodex.deserialize(rolodexSer);
-		Rolodex diffOrder = makeNewRolodexWithDifferentlyOdderedSeededData();
-		assertEquals(diffOrder, matchingRolodex);
-		assertEquals(diffOrder.size(), matchingRolodex.size());
+		assertEquals(otherRolodex, matchingRolodex);
+		assertEquals(otherRolodex.size(), matchingRolodex.size());
 		for (int i = 0; i < rolodex.size(); i++) {
 			assertEquals(rolodex.get(i), matchingRolodex.get(i));
 		}

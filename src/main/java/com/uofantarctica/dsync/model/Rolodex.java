@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Rolodex implements Serializable, Iterable<SyncState> {
@@ -24,9 +23,8 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	private transient DSyncReporting dSyncReporting;
 
 	public Rolodex(SyncState myInitialSyncState, String theDataPrefix, DSyncReporting dSyncReporting) {
-		syncStates = new SyncStates(theDataPrefix);
+		syncStates = new SyncStates(myInitialSyncState, theDataPrefix);
 		this.dSyncReporting = dSyncReporting;
-		this.add(myInitialSyncState);
 	}
 
 	public boolean matchesCurrentRolodex(Interest interest) {
@@ -60,8 +58,8 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		return new SerializeUtils<Rolodex>().deserialize(rolodexSer);
 	}
 
-	public SyncStates merge(Rolodex newRolodex) {
-		SyncStates newContacts = new SyncStates(newRolodex.getDataPrefix());
+	public List<SyncState> merge(Rolodex newRolodex) {
+		List<SyncState> newContacts = new ArrayList<>();
 		for (SyncState s : newRolodex) {
 			if (!syncStates.contains(s)) {
 				s.setSeq(0l);
@@ -100,12 +98,12 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Rolodex that = (Rolodex) o;
-		return Objects.equals(syncStates, that.syncStates);
+		return this.syncStates.equals(that.syncStates);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(syncStates);
+		return Objects.hash(this.syncStates.getSyncStateSet());
 	}
 
 	@Override

@@ -24,6 +24,7 @@ import net.named_data.jndn.tests.ChatbufProto;
 import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -50,7 +51,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final SyncState myInitialSyncState;
 	private final long myInitialSeqNo = -1l;
 	private final ExclusionManager exclusionManager;
-	private final boolean useExclusions = true;
+	private final boolean useExclusions = false;
 
 	public DSync(OnData onData, ChronoSync2013.OnInitialized onInitialized, String theDataPrefix, String theBroadcastPrefix,
 							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName) {
@@ -177,7 +178,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 			Blob content = new Blob(rolodexSer);
 			data.setContent(content);
 			data.getMetaInfo().setFreshnessPeriod(0d);
-			if (exclusionManager.canSatisfy(interest, data)) {
+			if (useExclusions || exclusionManager.canSatisfy(interest, data)) {
 				dSyncReporting.reportSendData(interest);
 				face.putData(data);
 			}
@@ -198,7 +199,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		try {
 			byte[] rolodexSer = content.getImmutableArray();
 			Rolodex otherRolodex = Rolodex.deserialize(rolodexSer);
-			SyncStates newContacts = rolodex.merge(otherRolodex);
+			List<SyncState> newContacts = rolodex.merge(otherRolodex);
 			for (SyncState s : newContacts) {
 				onContactAdded(s);
 			}

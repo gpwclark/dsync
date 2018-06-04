@@ -5,21 +5,66 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
+import net.named_data.jndn.util.Common;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-@AllArgsConstructor
 public class SyncState implements Serializable {
+	private static final String TAG = SyncState.class.getName();
+	private static final Logger log = Logger.getLogger(TAG);
+
 	private String id;
 	private long session;
 	private long seq;
+	private String digest;
+
+	public SyncState(String id, long session, long seq) {
+		setId(id);
+		setSession(session);
+		setSeq(seq);
+		setDigest();
+	}
 
 	public SyncState(Interest interest) {
 		Name name = interest.getName();
 		setId(name.get(-3).toEscapedString());
 		setSession(Long.valueOf(name.get(-2).toEscapedString()));
 		setSeq(Long.valueOf(name.get(-1).toEscapedString()));
+		setDigest();
+	}
+
+	private void setDigest() {
+		try {
+			digest = createHash(id.getBytes(), longToBytes(session), longToBytes(seq));
+		}
+		catch (Exception e) {
+			log.log(Level.SEVERE, "Failed to create hash of this SyncState.", e);
+		}
+	}
+
+	public static String createHash(byte[] ...bytes) throws Exception {
+		try {
+			MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+			for (byte[] b : bytes) {
+				sha256.update(b);
+			}
+			return new String(sha256.digest());
+		}
+		catch (Exception e) {
+			throw e;
+		}
+	}
+
+	public byte[] longToBytes(long x) {
+		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+		buffer.putLong(x);
+		return buffer.array();
 	}
 
 	public static String makeRegisterPrefixName(String dataPrefix, SyncState s) {
@@ -80,14 +125,18 @@ public class SyncState implements Serializable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SyncState syncState = (SyncState) o;
-		return session == syncState.session &&
-			Objects.equals(id, syncState.id);
+		int thatDigest = syncState.hashCode();
+		int thisDigest = this.hashCode();
+		return thisDigest == thatDigest;
+	}
+
+	public String getDigest() {
+		return this.digest;
 	}
 
 	@Override
 	public int hashCode() {
-
-		return Objects.hash(id, session);
+		return getDigest().hashCode();
 	}
 
 	@Override
