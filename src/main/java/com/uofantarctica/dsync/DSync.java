@@ -1,11 +1,11 @@
 package com.uofantarctica.dsync;
 
+import com.uofantarctica.dsync.model.ChatbufProto;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
 import com.uofantarctica.dsync.model.ChatMessageBox;
-import com.uofantarctica.dsync.model.SyncStates;
 import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
-import com.uofantarctica.dsync.syncdata.ContactDataRequester;
+import com.uofantarctica.dsync.syncdata.ContactDataResponder;
 import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
@@ -20,7 +20,6 @@ import net.named_data.jndn.OnTimeout;
 import net.named_data.jndn.security.KeyChain;
 import net.named_data.jndn.security.SecurityException;
 import net.named_data.jndn.sync.ChronoSync2013;
-import net.named_data.jndn.tests.ChatbufProto;
 import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
@@ -102,7 +101,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private void registerDataPrefix() {
 		try {
-			ContactDataRequester cdr = new ContactDataRequester(outbox, dSyncReporting);
+			ContactDataResponder cdr = new ContactDataResponder(outbox, dSyncReporting);
 		face.registerPrefix(new Name(myDataPrefix),
 			(OnInterestCallback) cdr,
 			(OnRegisterFailed)cdr,
