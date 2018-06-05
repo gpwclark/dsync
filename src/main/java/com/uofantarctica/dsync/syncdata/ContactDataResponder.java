@@ -1,7 +1,7 @@
 package com.uofantarctica.dsync.syncdata;
 
 import com.uofantarctica.dsync.DSyncReporting;
-import com.uofantarctica.dsync.model.ChatMessageBox;
+import com.uofantarctica.dsync.model.ChatMessageOutbox;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -19,10 +19,10 @@ public class ContactDataResponder implements OnInterestCallback, OnRegisterFaile
 	private static final String TAG = ContactDataResponder.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private final ChatMessageBox outbox;
+	private final ChatMessageOutbox outbox;
 	private final DSyncReporting dSyncReporting;
 
-	public ContactDataResponder(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
+	public ContactDataResponder(ChatMessageOutbox outbox, DSyncReporting dSyncReporting) {
 		this.outbox = outbox;
 		this.dSyncReporting = dSyncReporting;
 	}

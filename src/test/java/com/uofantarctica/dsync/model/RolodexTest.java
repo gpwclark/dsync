@@ -1,4 +1,4 @@
-package com.uofantarctica;
+package com.uofantarctica.dsync.model;
 
 import com.uofantarctica.dsync.DSyncReporting;
 import com.uofantarctica.dsync.model.Rolodex;

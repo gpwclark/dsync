@@ -5,22 +5,21 @@ import net.named_data.jndn.Interest;
 import net.named_data.jndn.util.Blob;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-public class ChatMessageBox {
-	private static final String TAG = ChatMessageBox.class.getName();
+public class ChatMessageOutbox {
+	private static final String TAG = ChatMessageOutbox.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 	private final Map<Long, ChatbufProto.ChatMessage> myMessages = new HashMap<>();
 	private final String chatRoom;
 	private final String screenName;
 	private final SyncState mySyncState;
 
-	public ChatMessageBox(String chatRoom, String screenName, SyncState mySyncState) {
+	public ChatMessageOutbox(String chatRoom, String screenName, SyncState mySyncState) {
 		this.chatRoom = chatRoom;
 		this.screenName = screenName;
 		this.mySyncState = mySyncState;
@@ -83,25 +82,6 @@ public class ChatMessageBox {
 
 	private void publishNextMessage(ChatbufProto.ChatMessage message) {
 		myMessages.put(mySyncState.getNextSeq(), message);
-	}
-
-	//TODO easy optimization later if necessary.
-	public List<ChatbufProto.ChatMessage> getSorted() {
-		List<SortableChatMessage> chatMessages = new ArrayList<>();
-		List<ChatbufProto.ChatMessage> chatbufMessages = new ArrayList<>();
-
-		for (int i = 0; i < myMessages.size(); i++) {
-			long j = (long)i;
-			ChatbufProto.ChatMessage message = myMessages.get(j);
-			chatMessages.add(new SortableChatMessage(message));
-		}
-
-		Collections.sort(chatMessages, Collections.reverseOrder());
-
-		for (SortableChatMessage chatMessage : chatMessages) {
-			chatbufMessages.add(chatMessage.getMessage());
-		}
-		return chatbufMessages;
 	}
 
 }

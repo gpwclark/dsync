@@ -1,6 +1,8 @@
 package com.uofantarctica.dsync.model;
 
 import com.uofantarctica.dsync.DSyncReporting;
+import com.uofantarctica.dsync.OnContactAdded;
+import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
 import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
@@ -8,8 +10,10 @@ import net.named_data.jndn.Name;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -21,6 +25,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 
 	private SyncStates syncStates;
 	private transient DSyncReporting dSyncReporting;
+	private transient Map<String, ContactDataReceiver> dataReceivers = new HashMap<>();
 
 	public Rolodex(SyncState myInitialSyncState, String theDataPrefix, DSyncReporting dSyncReporting) {
 		syncStates = new SyncStates(myInitialSyncState, theDataPrefix);
@@ -58,16 +63,29 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		return new SerializeUtils<Rolodex>().deserialize(rolodexSer);
 	}
 
-	public List<SyncState> merge(Rolodex newRolodex) {
+	public void merge(Rolodex newRolodex, OnContactAdded dSync) {
 		List<SyncState> newContacts = new ArrayList<>();
+		List<SyncState> existingContacts = new ArrayList<>();
 		for (SyncState s : newRolodex) {
+			//VERY important that we are passing the actual sync state objects the rolodex has in it.
 			if (!syncStates.contains(s)) {
-				s.setSeq(0l);
 				this.add(s);
 				newContacts.add(s);
 			}
+			else {
+				SyncState syncStateFromRolodex = this.get(s);
+				existingContacts.add(syncStateFromRolodex);
+			}
 		}
-		return newContacts;
+		if (newContacts.size() > 0 && existingContacts.size() > 0) {
+			dSync.onContacts(newContacts, existingContacts);
+		}
+		else if (newContacts.size() > 0) {
+			dSync.onNewContactsAdded(newContacts);
+		}
+		else if (existingContacts.size() > 0) {
+			dSync.onExistingContacts(existingContacts);
+		}
 	}
 
 	@Override
@@ -89,6 +107,10 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		return syncStates.size();
 	}
 
+	public SyncState get(SyncState syncState) {
+		return syncStates.get(syncState);
+	}
+
 	public SyncState get(int i) {
 		return syncStates.get(i);
 	}
@@ -103,7 +125,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.syncStates.getSyncStateSet());
+		return Objects.hash(this.syncStates.getSyncStateMap());
 	}
 
 	@Override
@@ -111,6 +133,20 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		return "Rolodex{" +
 			"syncStates=" + syncStates +
 			'}';
+	}
+
+	public void registerExpressed(SyncState syncState, ContactDataReceiver cdr) {
+		dataReceivers.put(syncState.getId(), cdr);
+	}
+
+	public void silenceExistingSyncStateCallback(SyncState syncState) throws Exception {
+		ContactDataReceiver cdr = dataReceivers.get(syncState.getId());
+		if (cdr == null)
+			throw new Exception("Data receiver was null for id of given sync state.");
+
+		if (!cdr.isBlocking()) {
+			cdr.silence();
+		}
 	}
 }
 

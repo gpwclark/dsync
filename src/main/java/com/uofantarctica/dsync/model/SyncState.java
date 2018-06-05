@@ -24,6 +24,13 @@ public class SyncState implements Serializable {
 	private long seq;
 	private String digest;
 
+	public SyncState(SyncState syncState) {
+		setId(syncState.getId());
+		setSession(syncState.getSession());
+		setSeq(syncState.getSeq());
+		setDigest();
+	}
+
 	public SyncState(String id, long session, long seq) {
 		setId(id);
 		setSession(session);

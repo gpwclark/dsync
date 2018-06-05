@@ -7,6 +7,7 @@ import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
 
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -43,8 +44,8 @@ public class DSyncReporting {
 		log("onRegisterDataPrefix: " + dataPrefix);
 	}
 
-	public void onContactAdded(SyncState s) {
-		log("onContactAdded: " + s.toString());
+	public void onNewContactAdded(SyncState s) {
+		log("onNewContactsAdded: " + s.toString());
 	}
 
 	public void onDataPrefixShouldNotRespondInterest(Interest interest) {
@@ -77,5 +78,24 @@ public class DSyncReporting {
 
 	public void reportNotSendingDataDueToExcludes(Interest interest) {
 		log("skipping, face.putData onInterest: " + interest.toUri());
+	}
+
+	public void onNewContactsAdded(List<SyncState> newContacts) {
+		log("new contacts added, num: " + newContacts.size() + ", toString(): " + newContacts.toString());
+	}
+
+	public void onExistingContactsAdded(List<SyncState> theirSyncStatesFromReceivedRolodex) {
+		log("existing contact data received, num: " + theirSyncStatesFromReceivedRolodex.size() + ", toString(): " + theirSyncStatesFromReceivedRolodex
+			.toString());
+	}
+
+	public void onContactsAdded(List<SyncState> newContacts, List<SyncState> existingContacts) {
+		log("new contacts added, num: " + newContacts.size() + ", toString(): " + newContacts.toString());
+		log("existing contact data received, num: " + existingContacts.size() + ", toString(): " + existingContacts
+			.toString());
+	}
+
+	public void inRecovery(List<SyncState> syncStatesToAggregate) {
+		log("going into recovery for " + syncStatesToAggregate.size() + " syncStates.");
 	}
 }
