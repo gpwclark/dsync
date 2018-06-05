@@ -1131,6 +1131,15 @@ public final class ChatbufProto {
      */
     com.uofantarctica.dsync.model.ChatbufProto.ChatMessageOrBuilder getMessageListOrBuilder(
         int index);
+
+    /**
+     * <code>required int64 highestSeq = 2;</code>
+     */
+    boolean hasHighestSeq();
+    /**
+     * <code>required int64 highestSeq = 2;</code>
+     */
+    long getHighestSeq();
   }
   /**
    * Protobuf type {@code com.uofantarctica.dsync.model.ChatMessageList}
@@ -1192,6 +1201,11 @@ public final class ChatbufProto {
               messageList_.add(input.readMessage(com.uofantarctica.dsync.model.ChatbufProto.ChatMessage.PARSER, extensionRegistry));
               break;
             }
+            case 16: {
+              bitField0_ |= 0x00000001;
+              highestSeq_ = input.readInt64();
+              break;
+            }
           }
         }
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
@@ -1234,6 +1248,7 @@ public final class ChatbufProto {
       return PARSER;
     }
 
+    private int bitField0_;
     public static final int MESSAGELIST_FIELD_NUMBER = 1;
     private java.util.List<com.uofantarctica.dsync.model.ChatbufProto.ChatMessage> messageList_;
     /**
@@ -1269,8 +1284,24 @@ public final class ChatbufProto {
       return messageList_.get(index);
     }
 
+    public static final int HIGHESTSEQ_FIELD_NUMBER = 2;
+    private long highestSeq_;
+    /**
+     * <code>required int64 highestSeq = 2;</code>
+     */
+    public boolean hasHighestSeq() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required int64 highestSeq = 2;</code>
+     */
+    public long getHighestSeq() {
+      return highestSeq_;
+    }
+
     private void initFields() {
       messageList_ = java.util.Collections.emptyList();
+      highestSeq_ = 0L;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1278,6 +1309,10 @@ public final class ChatbufProto {
       if (isInitialized == 1) return true;
       if (isInitialized == 0) return false;
 
+      if (!hasHighestSeq()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       for (int i = 0; i < getMessageListCount(); i++) {
         if (!getMessageList(i).isInitialized()) {
           memoizedIsInitialized = 0;
@@ -1294,6 +1329,9 @@ public final class ChatbufProto {
       for (int i = 0; i < messageList_.size(); i++) {
         output.writeMessage(1, messageList_.get(i));
       }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt64(2, highestSeq_);
+      }
       getUnknownFields().writeTo(output);
     }
 
@@ -1306,6 +1344,10 @@ public final class ChatbufProto {
       for (int i = 0; i < messageList_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(1, messageList_.get(i));
+      }
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt64Size(2, highestSeq_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1431,6 +1473,8 @@ public final class ChatbufProto {
         } else {
           messageListBuilder_.clear();
         }
+        highestSeq_ = 0L;
+        bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
 
@@ -1458,6 +1502,7 @@ public final class ChatbufProto {
       public com.uofantarctica.dsync.model.ChatbufProto.ChatMessageList buildPartial() {
         com.uofantarctica.dsync.model.ChatbufProto.ChatMessageList result = new com.uofantarctica.dsync.model.ChatbufProto.ChatMessageList(this);
         int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
         if (messageListBuilder_ == null) {
           if (((bitField0_ & 0x00000001) == 0x00000001)) {
             messageList_ = java.util.Collections.unmodifiableList(messageList_);
@@ -1467,6 +1512,11 @@ public final class ChatbufProto {
         } else {
           result.messageList_ = messageListBuilder_.build();
         }
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.highestSeq_ = highestSeq_;
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -1508,11 +1558,18 @@ public final class ChatbufProto {
             }
           }
         }
+        if (other.hasHighestSeq()) {
+          setHighestSeq(other.getHighestSeq());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
 
       public final boolean isInitialized() {
+        if (!hasHighestSeq()) {
+          
+          return false;
+        }
         for (int i = 0; i < getMessageListCount(); i++) {
           if (!getMessageList(i).isInitialized()) {
             
@@ -1781,6 +1838,38 @@ public final class ChatbufProto {
         return messageListBuilder_;
       }
 
+      private long highestSeq_ ;
+      /**
+       * <code>required int64 highestSeq = 2;</code>
+       */
+      public boolean hasHighestSeq() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required int64 highestSeq = 2;</code>
+       */
+      public long getHighestSeq() {
+        return highestSeq_;
+      }
+      /**
+       * <code>required int64 highestSeq = 2;</code>
+       */
+      public Builder setHighestSeq(long value) {
+        bitField0_ |= 0x00000002;
+        highestSeq_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required int64 highestSeq = 2;</code>
+       */
+      public Builder clearHighestSeq() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        highestSeq_ = 0L;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:com.uofantarctica.dsync.model.ChatMessageList)
     }
 
@@ -1818,9 +1907,9 @@ public final class ChatbufProto {
       "sageType:\004CHAT\022\014\n\004data\030\004 \001(\t\022\021\n\ttimestam" +
       "p\030\005 \002(\005\"F\n\017ChatMessageType\022\010\n\004CHAT\020\000\022\t\n\005" +
       "HELLO\020\001\022\t\n\005LEAVE\020\002\022\010\n\004JOIN\020\003\022\t\n\005OTHER\020\004\"" +
-      "R\n\017ChatMessageList\022?\n\013messageList\030\001 \003(\0132" +
+      "f\n\017ChatMessageList\022?\n\013messageList\030\001 \003(\0132" +
       "*.com.uofantarctica.dsync.model.ChatMess" +
-      "age"
+      "age\022\022\n\nhighestSeq\030\002 \002(\003"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -1845,7 +1934,7 @@ public final class ChatbufProto {
     internal_static_com_uofantarctica_dsync_model_ChatMessageList_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_com_uofantarctica_dsync_model_ChatMessageList_descriptor,
-        new java.lang.String[] { "MessageList", });
+        new java.lang.String[] { "MessageList", "HighestSeq", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

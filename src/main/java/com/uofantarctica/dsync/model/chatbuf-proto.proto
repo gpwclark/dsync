@@ -23,4 +23,5 @@ message ChatMessage {
 message ChatMessageList
 {
   repeated ChatMessage messageList = 1;
+  required int64 highestSeq = 2;
 }

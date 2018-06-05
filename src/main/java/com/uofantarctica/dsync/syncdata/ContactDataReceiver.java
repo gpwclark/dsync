@@ -13,6 +13,8 @@ import net.named_data.jndn.OnData;
 import net.named_data.jndn.OnTimeout;
 import net.named_data.jndn.util.Blob;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,6 +28,7 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 	private final DSyncReporting dSyncReporting;
 	private final ChatMessageInbox inbox;
 	private boolean silenced = false;
+	private long highestReceivedDataSegment = 0;
 
 	public ContactDataReceiver(DSync dsync, OnData onData, SyncState syncState, DSyncReporting dSyncReporting, ChatMessageInbox inbox) {
 		this.dsync = dsync;
@@ -42,8 +45,6 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 
 		try {
 			dSyncReporting.onDataPrefixOnData(interest, data);
-			syncState.incSyncState();
-			dsync.expressInterestInDataSuffix(syncState);
 			if (inbox.isBlocking()) {
 				if (inbox.add(data)) {
 					for (Data orderedData : inbox.getSorted()) {
@@ -54,10 +55,28 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 			}
 			else {
 				passToOnData(interest, data);
+                incSyncStateToHighestReceived(data);
+                dsync.expressInterestInDataSuffix(syncState);
+                passToOnData(interest, data);
 			}
 		}
 		catch (Exception e) {
 			log.log(Level.SEVERE, "Error in ContactDataReceiver onData");
+		}
+	}
+
+	private void incSyncStateToHighestReceived(Data data) {
+		try {
+			ChatbufProto.ChatMessageList list
+				= ChatbufProto.ChatMessageList.parseFrom(data.getContent().getImmutableArray());
+			long currMax = list.getHighestSeq();
+
+			if (currMax > highestReceivedDataSegment)
+				highestReceivedDataSegment = currMax;
+				syncState.setSeq(highestReceivedDataSegment + 1);
+
+		} catch (InvalidProtocolBufferException e) {
+			log.log(Level.SEVERE, "Failed to properly increment sync state.");
 		}
 	}
 
