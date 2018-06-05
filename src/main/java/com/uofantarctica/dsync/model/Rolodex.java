@@ -103,7 +103,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.syncStates.getSyncStateSet());
+		return Objects.hash(this.syncStates.getSyncStateMap());
 	}
 
 	@Override

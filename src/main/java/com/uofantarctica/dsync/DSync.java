@@ -81,8 +81,13 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		return dataPrefix + "/" + sessionNo + "/" + id;
 	}
 
-	public void publishNextMessage(long seqNo, ChatbufProto.ChatMessage.ChatMessageType messageType, String message, double time) {
-		outbox.publishNextMessage(seqNo, messageType, message, time);
+	public void publishNextMessage(long seqNo, String messageType, String message, double time) {
+		ChatbufProto.ChatMessage.ChatMessageType actualMessageType = getActualMessageTypeFromString(messageType);
+		outbox.publishNextMessage(seqNo, actualMessageType, message, time);
+	}
+
+	private ChatbufProto.ChatMessage.ChatMessageType getActualMessageTypeFromString(String messageType) {
+		return ChatbufProto.ChatMessage.ChatMessageType.valueOf(messageType);
 	}
 
 	private void registerBroadcastPrefix() {

@@ -38,10 +38,12 @@ public class ChatMessageBox {
 		//If their request is lower than the current seqNo, we want to give them
 		//up to that.
 		long reqSeq = s.getSeq();
-		while (currRequestIsValid(reqSeq)) {
+		do {
 			builder.addMessageList(getMessage(reqSeq));
+			builder.setHighestSeq(reqSeq);
 			++reqSeq;
-		}
+		} while (currRequestIsValid(reqSeq));
+
 		ChatbufProto.ChatMessageList messageList = builder.build();
 		byte[] array = messageList.toByteArray();
 		Blob blob = new Blob(array);

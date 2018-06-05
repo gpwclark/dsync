@@ -3,9 +3,11 @@ package com.uofantarctica.dsync.model;
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -18,7 +20,7 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 	private static final Logger log = Logger.getLogger(TAG);
 
 	private final List<SyncState> syncStateList = new ArrayList<>();
-	private final Set<SyncState> syncStateSet = new HashSet<>();
+	private final Map<String, SyncState> syncStateMap = new HashMap<>();
 	private final String dataPrefix;
 	private String digest;
 
@@ -35,7 +37,7 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 			log.log(Level.SEVERE, "failed to create new sync digest on add to syncStateList.", e);
 		}
 		syncStateList.add(s);
-		syncStateSet.add(s);
+		syncStateMap.put(s.getId(), s);
 	}
 
 	private String createHash(String digest, String digest1) throws Exception {
@@ -77,7 +79,8 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 	}
 
 	public boolean contains(SyncState s) {
-		return syncStateSet.contains(s);
+		SyncState syncState = syncStateMap.get(s.getId());
+		return syncState != null;
 	}
 
 	public String getDataPrefix() {
@@ -89,13 +92,13 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SyncStates that = (SyncStates) o;
-		return Objects.equals(syncStateSet, that.syncStateSet);
+		return Objects.equals(syncStateMap, that.syncStateMap);
 	}
 
 	@Override
 	public int hashCode() {
 
-		return Objects.hash(syncStateSet);
+		return Objects.hash(syncStateMap);
 	}
 
 	public String getDigest() {
@@ -111,7 +114,7 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 			'}';
 	}
 
-	public Set<SyncState> getSyncStateSet() {
-		return syncStateSet;
+	public Map<String, SyncState> getSyncStateMap() {
+		return syncStateMap;
 	}
 }
