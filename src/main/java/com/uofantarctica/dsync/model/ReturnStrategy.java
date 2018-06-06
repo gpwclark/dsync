@@ -1,4 +1,6 @@
 package com.uofantarctica.dsync.model;
 
-public class ReturnStrategy {
+public enum ReturnStrategy {
+	ALL,
+	MOST_RECENT,
 }

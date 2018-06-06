@@ -27,7 +27,7 @@ publishing {
         maven(MavenPublication) {
             groupId 'com.uofantarctica'
             artifactId 'dsync'
-            version '0.1'
+            version '1.1'
 
             from components.java
         }

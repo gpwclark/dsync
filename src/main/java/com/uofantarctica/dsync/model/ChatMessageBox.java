@@ -5,7 +5,6 @@ import net.named_data.jndn.Interest;
 import net.named_data.jndn.util.Blob;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -32,17 +31,13 @@ public class ChatMessageBox {
 
 	//TODO putting the id on there is redundant.
 	public Data getDataForInterest(Interest interest) {
-		SyncState s = new SyncState(interest);
+		SyncState syncState = new SyncState(interest);
 		Data data = new Data(interest.getName());
 		ChatbufProto.ChatMessageList.Builder builder = ChatbufProto.ChatMessageList.newBuilder();
 		//If their request is lower than the current seqNo, we want to give them
 		//up to that.
-		long reqSeq = s.getSeq();
-		do {
-			builder.addMessageList(getMessage(reqSeq));
-			builder.setHighestSeq(reqSeq);
-			++reqSeq;
-		} while (currRequestIsValid(reqSeq));
+		ReturnStrategy strategy = syncState.getReturnStrategy();
+		buildMessageList(strategy, builder, syncState);
 
 		ChatbufProto.ChatMessageList messageList = builder.build();
 		byte[] array = messageList.toByteArray();
@@ -50,6 +45,31 @@ public class ChatMessageBox {
 		data.setContent(blob);
 		return data;
 	}
+
+	private void buildMessageList(ReturnStrategy strategy, ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+		switch (strategy) {
+			case ALL: fetchMessagesFromRequestedToEnd(builder, syncState);
+								break;
+			case MOST_RECENT: fetchMostRecent(builder);
+								break;
+		}
+	}
+
+	private void fetchMostRecent(ChatbufProto.ChatMessageList.Builder builder) {
+		long mostRecent = mySyncState.getSeq();
+		builder.addMessageList(getMessage(mostRecent));
+		builder.setHighestSeq(mostRecent);
+	}
+
+	private void fetchMessagesFromRequestedToEnd(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+		long reqSeq = syncState.getSeq();
+		do {
+			builder.addMessageList(getMessage(reqSeq));
+			builder.setHighestSeq(reqSeq);
+			++reqSeq;
+		} while (currRequestIsValid(reqSeq));
+	}
+
 
 	private ChatbufProto.ChatMessage getMessage(long reqSeq) {
 		return myMessages.get(reqSeq);
