@@ -1,14 +1,9 @@
 package com.uofantarctica.dsync.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
-import net.named_data.jndn.util.Common;
 
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
@@ -19,64 +14,26 @@ public class SyncState implements Serializable {
 	private static final String TAG = SyncState.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private String id;
+	private String producerPrefix;
 	private long session;
 	private long seq;
-	private String digest;
 
-	public SyncState(String id, long session, long seq) {
-		setId(id);
+	public SyncState(String producerPrefix, long session, long seq) {
+		setProducerPrefix(producerPrefix);
 		setSession(session);
 		setSeq(seq);
-		setDigest();
 	}
 
 	public SyncState(Interest interest) {
 		Name name = interest.getName();
-		setId(name.get(-3).toEscapedString());
+		Name subName = name.getSubName(0, name.size() - 2);
+		setProducerPrefix(subName.toUri());
 		setSession(Long.valueOf(name.get(-2).toEscapedString()));
 		setSeq(Long.valueOf(name.get(-1).toEscapedString()));
-		setDigest();
 	}
 
-	private void setDigest() {
-		try {
-			digest = createHash(id.getBytes(), longToBytes(session), longToBytes(seq));
-		}
-		catch (Exception e) {
-			log.log(Level.SEVERE, "Failed to create hash of this SyncState.", e);
-		}
-	}
-
-	public static String createHash(byte[] ...bytes) throws Exception {
-		try {
-			MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-			for (byte[] b : bytes) {
-				sha256.update(b);
-			}
-			return new String(sha256.digest());
-		}
-		catch (Exception e) {
-			throw e;
-		}
-	}
-
-	public byte[] longToBytes(long x) {
-		ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-		buffer.putLong(x);
-		return buffer.array();
-	}
-
-	public static String makeRegisterPrefixName(String dataPrefix, SyncState s) {
-		Name name = new Name(dataPrefix)
-			.append(s.getId())
-			.append(Long.toString(s.getSession()));
-		return name.toUri();
-	}
-
-	public static Name makeSyncStateName(String dataPrefix, SyncState s) {
-		Name name = new Name(dataPrefix)
-			.append(s.getId())
+	public static Name makeSyncStateName(SyncState s) {
+		Name name = new Name(s.getProducerPrefix())
 			.append(Long.toString(s.getSession()))
 			.append(Long.toString(s.getSeq()));
 		return name;
@@ -96,12 +53,18 @@ public class SyncState implements Serializable {
 		return this.getSeq();
 	}
 
-	public String getId() {
-		return id;
+	public ReturnStrategy getReturnStrategy() {
+		Name name = new Name(producerPrefix);
+		Name.Component comp = name.get(-1);
+		return ReturnStrategy.valueOf(comp.toEscapedString());
 	}
 
-	public void setId(String id) {
-		this.id = id;
+	public String getProducerPrefix() {
+		return producerPrefix;
+	}
+
+	public void setProducerPrefix(String producerPrefix) {
+		this.producerPrefix = producerPrefix;
 	}
 
 	public long getSession() {
@@ -125,24 +88,19 @@ public class SyncState implements Serializable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SyncState syncState = (SyncState) o;
-		int thatDigest = syncState.hashCode();
-		int thisDigest = this.hashCode();
-		return thisDigest == thatDigest;
-	}
-
-	public String getDigest() {
-		return this.digest;
+		return Objects.equals(producerPrefix, syncState.producerPrefix);
 	}
 
 	@Override
 	public int hashCode() {
-		return getDigest().hashCode();
+
+		return Objects.hash(producerPrefix);
 	}
 
 	@Override
 	public String toString() {
 		return "SyncState{" +
-			"id='" + id + '\'' +
+			"producerPrefix='" + producerPrefix + '\'' +
 			", session=" + session +
 			", seq=" + seq +
 			'}';

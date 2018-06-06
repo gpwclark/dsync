@@ -1,11 +1,12 @@
 package com.uofantarctica.dsync;
 
+import com.uofantarctica.dsync.model.ChatbufProto;
+import com.uofantarctica.dsync.model.ReturnStrategy;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
 import com.uofantarctica.dsync.model.ChatMessageBox;
-import com.uofantarctica.dsync.model.SyncStates;
 import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
-import com.uofantarctica.dsync.syncdata.ContactDataRequester;
+import com.uofantarctica.dsync.syncdata.ContactDataResponder;
 import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
@@ -20,7 +21,6 @@ import net.named_data.jndn.OnTimeout;
 import net.named_data.jndn.security.KeyChain;
 import net.named_data.jndn.security.SecurityException;
 import net.named_data.jndn.sync.ChronoSync2013;
-import net.named_data.jndn.tests.ChatbufProto;
 import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
@@ -36,7 +36,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final OnData onData;
 	private final ChronoSync2013.OnInitialized onInitialized;
 	private final String theDataPrefix;
-	private final String myDataPrefix;
+	private final String myProducerPrefix;
 	private final String theBroadcastPrefix;
 	private final long sessionNo;
 	private final Face face;
@@ -51,10 +51,12 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final SyncState myInitialSyncState;
 	private final long myInitialSeqNo = -1l;
 	private final ExclusionManager exclusionManager;
-	private final boolean useExclusions = false;
+	private final boolean useExclusions = true;
+	private final ReturnStrategy strategy;
 
 	public DSync(OnData onData, ChronoSync2013.OnInitialized onInitialized, String theDataPrefix, String theBroadcastPrefix,
-							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName) {
+							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName,
+							 ReturnStrategy strategy) {
 		this.onData = onData;
 		this.onInitialized = onInitialized;
 		this.theDataPrefix = theDataPrefix;
@@ -63,10 +65,11 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		this.face = face;
 		this.keyChain = keyChain;
 		this.id = UUID.randomUUID().toString();
-		this.myInitialSyncState = new SyncState(id, sessionNo, myInitialSeqNo);
-		this.myDataPrefix = SyncState.makeRegisterPrefixName(theDataPrefix, myInitialSyncState);
+		this.strategy = strategy;
+		this.myProducerPrefix = theDataPrefix + "/" + id + "/" + strategy.toString();
+		this.myInitialSyncState = new SyncState(myProducerPrefix, sessionNo, myInitialSeqNo);
 		this.dSyncReporting = new DSyncReporting(screenName, id);
-		this.rolodex = new Rolodex(myInitialSyncState, theDataPrefix, dSyncReporting);
+		this.rolodex = new Rolodex(myInitialSyncState, dSyncReporting);
 		this.chatRoom = chatRoom;
 		this.screenName = screenName;
 		this.exclusionManager = new ExclusionManager();
@@ -78,12 +81,13 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		expressInterestInRolodex();
 	}
 
-	private String makeDataName(String dataPrefix, long sessionNo, String id) {
-		return dataPrefix + "/" + sessionNo + "/" + id;
+	public void publishNextMessage(long seqNo, String messageType, String message, double time) {
+		ChatbufProto.ChatMessage.ChatMessageType actualMessageType = getActualMessageTypeFromString(messageType);
+		outbox.publishNextMessage(seqNo, actualMessageType, message, time);
 	}
 
-	public void publishNextMessage(long seqNo, ChatbufProto.ChatMessage.ChatMessageType messageType, String message, double time) {
-		outbox.publishNextMessage(seqNo, messageType, message, time);
+	private ChatbufProto.ChatMessage.ChatMessageType getActualMessageTypeFromString(String messageType) {
+		return ChatbufProto.ChatMessage.ChatMessageType.valueOf(messageType);
 	}
 
 	private void registerBroadcastPrefix() {
@@ -102,12 +106,12 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private void registerDataPrefix() {
 		try {
-			ContactDataRequester cdr = new ContactDataRequester(outbox, dSyncReporting);
-		face.registerPrefix(new Name(myDataPrefix),
+			ContactDataResponder cdr = new ContactDataResponder(outbox, dSyncReporting);
+		face.registerPrefix(new Name(myProducerPrefix),
 			(OnInterestCallback) cdr,
 			(OnRegisterFailed)cdr,
 			(OnRegisterSuccess)cdr);
-			dSyncReporting.onRegisterDataPrefix(myDataPrefix);
+			dSyncReporting.onRegisterDataPrefix(myProducerPrefix);
 		} catch (IOException e) {
 			log.log(Level.SEVERE, "Failed to register prefix.", e);
 		} catch (SecurityException e) {
@@ -127,7 +131,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	}
 
 	public void expressInterestInDataSuffix(SyncState s) {
-		Name name = SyncState.makeSyncStateName(theDataPrefix, s);
+		Name name = SyncState.makeSyncStateName(s);
 		Interest interest = new Interest(name);
 		interest.setInterestLifetimeMilliseconds(lifetime);
 		ContactDataReceiver cdp = new ContactDataReceiver(this, onData, s, dSyncReporting);
@@ -173,7 +177,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private void sendRolodex(Interest interest) {
 		try {
-			byte[] rolodexSer = new SerializeUtils<Rolodex>().serialize(rolodex);
+			byte[] rolodexSer = rolodex.serialize();
 			Data data = new Data(interest.getName());
 			Blob content = new Blob(rolodexSer);
 			data.setContent(content);

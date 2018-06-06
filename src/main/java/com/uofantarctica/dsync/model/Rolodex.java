@@ -1,5 +1,6 @@
 package com.uofantarctica.dsync.model;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.uofantarctica.dsync.DSyncReporting;
 import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Interest;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Rolodex implements Serializable, Iterable<SyncState> {
@@ -22,8 +24,8 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	private SyncStates syncStates;
 	private transient DSyncReporting dSyncReporting;
 
-	public Rolodex(SyncState myInitialSyncState, String theDataPrefix, DSyncReporting dSyncReporting) {
-		syncStates = new SyncStates(myInitialSyncState, theDataPrefix);
+	public Rolodex(SyncState myInitialSyncState, DSyncReporting dSyncReporting) {
+		syncStates = new SyncStates(myInitialSyncState);
 		this.dSyncReporting = dSyncReporting;
 	}
 
@@ -35,14 +37,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	}
 
 	public String getRolodexHashString() {
-		int hashCode = this.hashCode();
-		String hash = String.valueOf(hashCode);
-		return hash;
-	}
-
-
-	public String getDataPrefix() {
-		return syncStates.getDataPrefix();
+		return Integer.toString(this.hashCode());
 	}
 
 	public void add(SyncState s) {
@@ -50,12 +45,55 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		dSyncReporting.onContactAdditionInRolodex(s, this.hashCode());
 	}
 
-	public byte[] serialize() throws IOException {
-		return new SerializeUtils<Rolodex>().serialize(this);
+	public static Rolodex deserialize(byte[] rolodexSer) throws Exception {
+		return deserializeWithProtocolBuffers(rolodexSer);
 	}
 
-	public static Rolodex deserialize(byte[] rolodexSer) throws IOException, ClassNotFoundException {
-		return new SerializeUtils<Rolodex>().deserialize(rolodexSer);
+	private static Rolodex deserializeWithProtocolBuffers(byte[] rolodexSer) throws Exception {
+		try {
+			SyncStateProto.SyncStateMsg messages = SyncStateProto.SyncStateMsg.parseFrom(rolodexSer);
+			Rolodex rol = null;
+			for (int i = 0; i < messages.getSsCount(); i++) {
+				SyncState syncState = convertToAppSyncState(messages.getSs(i));
+				if (rol == null)
+					rol = new Rolodex(syncState, new DSyncReporting("receivedRolodex", "n/a"));
+				else
+					rol.add(syncState);
+			}
+			return rol;
+		} catch (InvalidProtocolBufferException e) {
+			throw new Exception(e);
+		}
+	}
+
+	private static SyncState convertToAppSyncState(SyncStateProto.SyncState ss) {
+		SyncState syncState = new SyncState(ss.getName(), ss.getSeqno().getSession(), ss.getSeqno().getSeq());
+		return syncState;
+	}
+
+	public byte[] serialize() throws IOException {
+		return serializeWithProtocolBuffers();
+	}
+
+	private byte[] serializeWithProtocolBuffers() {
+		SyncStateProto.SyncStateMsg.Builder builder = SyncStateProto.SyncStateMsg.newBuilder();
+		for (SyncState syncState : syncStates) {
+			addMessage(builder,
+				(String) syncState.getProducerPrefix(),
+				SyncStateProto.SyncState.ActionType.UPDATE,
+				(Long) syncState.getSeq(),
+				(Long) syncState.getSession());
+		}
+		return builder.build().toByteArray();
+	}
+
+	private void addMessage(SyncStateProto.SyncStateMsg.Builder builder, String producerPrefix,
+													SyncStateProto.SyncState.ActionType update, Long seq, Long session) {
+		builder.addSsBuilder()
+			.setName(producerPrefix)
+			.setType(update)
+			.getSeqnoBuilder().setSeq(seq)
+			.setSession(session);
 	}
 
 	public List<SyncState> merge(Rolodex newRolodex) {
@@ -103,7 +141,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.syncStates.getSyncStateSet());
+		return Objects.hash(this.syncStates);
 	}
 
 	@Override

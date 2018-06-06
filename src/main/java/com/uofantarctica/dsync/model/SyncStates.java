@@ -1,11 +1,15 @@
 package com.uofantarctica.dsync.model;
 
+import com.sun.corba.se.impl.orbutil.concurrent.Sync;
+
 import java.io.Serializable;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -18,39 +22,15 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 	private static final Logger log = Logger.getLogger(TAG);
 
 	private final List<SyncState> syncStateList = new ArrayList<>();
-	private final Set<SyncState> syncStateSet = new HashSet<>();
-	private final String dataPrefix;
-	private String digest;
+	private final Map<String, SyncState> syncStateMap = new HashMap<>();
 
-	public SyncStates(SyncState s, String dataPrefix) {
+	public SyncStates(SyncState s) {
 		this.add(s);
-		this.dataPrefix = dataPrefix;
 	}
 
 	public void add(SyncState s) {
-		try {
-			digest = createHash(digest, s.getDigest());
-		}
-		catch (Exception e) {
-			log.log(Level.SEVERE, "failed to create new sync digest on add to syncStateList.", e);
-		}
 		syncStateList.add(s);
-		syncStateSet.add(s);
-	}
-
-	private String createHash(String digest, String digest1) throws Exception {
-		try {
-			MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-			if (digest != null) {
-				sha256.update(digest.getBytes());
-			}
-			sha256.update(digest1.getBytes());
-			byte[] bytes = sha256.digest();
-			return new String(bytes);
-		}
-		catch (Exception e) {
-			throw e;
-		}
+		syncStateMap.put(s.getProducerPrefix(), s);
 	}
 
 	public int size() {
@@ -77,11 +57,8 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 	}
 
 	public boolean contains(SyncState s) {
-		return syncStateSet.contains(s);
-	}
-
-	public String getDataPrefix() {
-		return dataPrefix;
+		SyncState syncState = syncStateMap.get(s.getProducerPrefix());
+		return syncState != null;
 	}
 
 	@Override
@@ -89,29 +66,19 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SyncStates that = (SyncStates) o;
-		return Objects.equals(syncStateSet, that.syncStateSet);
+		return Objects.equals(syncStateMap, that.syncStateMap);
 	}
 
 	@Override
 	public int hashCode() {
 
-		return Objects.hash(syncStateSet);
-	}
-
-	public String getDigest() {
-		return this.digest;
+		return Objects.hash(syncStateMap);
 	}
 
 	@Override
 	public String toString() {
 		return "SyncStates{" +
-			"digest='" + digest + '\'' +
 			", syncStateList=" + syncStateList +
-			", dataPrefix='" + dataPrefix + '\'' +
 			'}';
-	}
-
-	public Set<SyncState> getSyncStateSet() {
-		return syncStateSet;
 	}
 }

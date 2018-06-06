@@ -2,10 +2,12 @@ package com.uofantarctica.dsync.model;
 
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
-import net.named_data.jndn.tests.ChatbufProto;
 import net.named_data.jndn.util.Blob;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -29,28 +31,45 @@ public class ChatMessageBox {
 
 	//TODO putting the id on there is redundant.
 	public Data getDataForInterest(Interest interest) {
-		SyncState s = new SyncState(interest);
+		SyncState syncState = new SyncState(interest);
 		Data data = new Data(interest.getName());
-		ChatbufProto.ChatMessage.Builder builder = ChatbufProto.ChatMessage.newBuilder();
+		ChatbufProto.ChatMessageList.Builder builder = ChatbufProto.ChatMessageList.newBuilder();
 		//If their request is lower than the current seqNo, we want to give them
 		//up to that.
-		long reqSeq = s.getSeq();
-		//TODO only ends up returning last message... how to serialize array of messages...
-		//while (currRequestIsValid(reqSeq)) {
-			ChatbufProto.ChatMessage message = getMessage(reqSeq);
-			builder.setFrom(message.getFrom());
-			builder.setTo(message.getTo());
-			builder.setType(message.getType());
-			builder.setData(message.getData());
-			builder.setTimestamp((int)Math.round(message.getTimestamp() / 1000.0));
-			//++reqSeq;
-		//}
-		ChatbufProto.ChatMessage content = builder.build();
-		byte[] array = content.toByteArray();
+		ReturnStrategy strategy = syncState.getReturnStrategy();
+		buildMessageList(strategy, builder, syncState);
+
+		ChatbufProto.ChatMessageList messageList = builder.build();
+		byte[] array = messageList.toByteArray();
 		Blob blob = new Blob(array);
 		data.setContent(blob);
 		return data;
 	}
+
+	private void buildMessageList(ReturnStrategy strategy, ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+		switch (strategy) {
+			case ALL: fetchMessagesFromRequestedToEnd(builder, syncState);
+								break;
+			case MOST_RECENT: fetchMostRecent(builder);
+								break;
+		}
+	}
+
+	private void fetchMostRecent(ChatbufProto.ChatMessageList.Builder builder) {
+		long mostRecent = mySyncState.getSeq();
+		builder.addMessageList(getMessage(mostRecent));
+		builder.setHighestSeq(mostRecent);
+	}
+
+	private void fetchMessagesFromRequestedToEnd(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+		long reqSeq = syncState.getSeq();
+		do {
+			builder.addMessageList(getMessage(reqSeq));
+			builder.setHighestSeq(reqSeq);
+			++reqSeq;
+		} while (currRequestIsValid(reqSeq));
+	}
+
 
 	private ChatbufProto.ChatMessage getMessage(long reqSeq) {
 		return myMessages.get(reqSeq);
@@ -68,15 +87,43 @@ public class ChatMessageBox {
 	public void publishNextMessage(long seqNo, ChatbufProto.ChatMessage.ChatMessageType messageType, String message, double time) {
 		ChatbufProto.ChatMessage.Builder builder
 			= ChatbufProto.ChatMessage.newBuilder();
-		builder.setFrom(screenName);
-		builder.setTo(chatRoom);
-		builder.setType(messageType);
-		builder.setData(message);
-		builder.setTimestamp((int)Math.round(time / 1000.0));
+		buildMessage(builder, screenName, chatRoom, messageType, message, time);
 		publishNextMessage(builder.build());
+	}
+
+	public static void buildMessage(ChatbufProto.ChatMessage.Builder builder,
+																	String screenName, String chatRoom,
+																	ChatbufProto.ChatMessage.ChatMessageType messageType,
+																	String message,
+																	double time) {
+		builder.setFrom(screenName)
+			.setTo(chatRoom)
+			.setType(messageType)
+			.setData(message)
+			.setTimestamp((int)Math.round(time / 1000.0));
 	}
 
 	private void publishNextMessage(ChatbufProto.ChatMessage message) {
 		myMessages.put(mySyncState.getNextSeq(), message);
 	}
+
+	//TODO easy optimization later if necessary.
+	public List<ChatbufProto.ChatMessage> getSorted() {
+		List<SortableChatMessage> chatMessages = new ArrayList<>();
+		List<ChatbufProto.ChatMessage> chatbufMessages = new ArrayList<>();
+
+		for (int i = 0; i < myMessages.size(); i++) {
+			long j = (long)i;
+			ChatbufProto.ChatMessage message = myMessages.get(j);
+			chatMessages.add(new SortableChatMessage(message));
+		}
+
+		Collections.sort(chatMessages, Collections.reverseOrder());
+
+		for (SortableChatMessage chatMessage : chatMessages) {
+			chatbufMessages.add(chatMessage.getMessage());
+		}
+		return chatbufMessages;
+	}
+
 }

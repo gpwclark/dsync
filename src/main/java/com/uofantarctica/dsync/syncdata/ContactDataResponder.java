@@ -15,14 +15,14 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ContactDataRequester implements OnInterestCallback, OnRegisterFailed, OnRegisterSuccess {
-	private static final String TAG = ContactDataRequester.class.getName();
+public class ContactDataResponder implements OnInterestCallback, OnRegisterFailed, OnRegisterSuccess {
+	private static final String TAG = ContactDataResponder.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
 	private final ChatMessageBox outbox;
 	private final DSyncReporting dSyncReporting;
 
-	public ContactDataRequester(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
+	public ContactDataResponder(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
 		this.outbox = outbox;
 		this.dSyncReporting = dSyncReporting;
 	}

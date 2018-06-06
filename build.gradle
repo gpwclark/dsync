@@ -17,8 +17,9 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile 'net.named-data:jndn:0.17'
+    compile 'net.named-data:jndn:0.16'
     compile 'org.projectlombok:lombok:1.16.22'
+    compile 'com.google.protobuf:protobuf-java:2.6.1'
 }
 
 publishing {
@@ -26,7 +27,7 @@ publishing {
         maven(MavenPublication) {
             groupId 'com.uofantarctica'
             artifactId 'dsync'
-            version '0.1'
+            version '1.2'
 
             from components.java
         }

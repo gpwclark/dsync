@@ -1,11 +1,11 @@
 package com.uofantarctica.dsync;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.uofantarctica.dsync.model.ChatbufProto;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
-import net.named_data.jndn.tests.ChatbufProto;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;

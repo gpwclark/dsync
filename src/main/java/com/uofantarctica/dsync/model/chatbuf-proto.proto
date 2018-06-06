@@ -1,7 +1,9 @@
 // Compile this file using:
 // protoc --java_out=. chatbuf-proto.proto
 
-package net.named_data.jndn.tests;
+syntax = "proto2";
+
+package com.uofantarctica.dsync.model;
 
 message ChatMessage {
   required string to = 1;
@@ -16,4 +18,10 @@ message ChatMessage {
   required ChatMessageType type = 3 [default = CHAT];
   optional string data = 4;
   required int32 timestamp = 5;
+}
+
+message ChatMessageList
+{
+  repeated ChatMessage messageList = 1;
+  required int64 highestSeq = 2;
 }
