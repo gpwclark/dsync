@@ -57,12 +57,15 @@ public class DSyncReporting {
 
 	public void onDataPrefixOnData(Interest interest, Data data) {
 		log ("onDataPrefixOnData: " + interest.toUri());
-		ChatbufProto.ChatMessage message = null;
+		ChatbufProto.ChatMessageList messages = null;
 		try {
-			message = ChatbufProto.ChatMessage.parseFrom(data.getContent().getImmutableArray());
-			log ("onDataPrefixOnData message: " + message.getData());
+			messages = ChatbufProto.ChatMessageList.parseFrom(data.getContent().getImmutableArray());
+			for (ChatbufProto.ChatMessage chatMessage : messages.getMessageListList()) {
+				log ("onDataPrefixOnData, from: " + chatMessage.getFrom() + ", message: " + chatMessage.getData()
+					+ ", at: " + chatMessage.getTimestamp());
+			}
 		} catch (InvalidProtocolBufferException e) {
-			log.log(Level.SEVERE, "Failed to get message from data for reporting.");
+			log.log(Level.SEVERE, "Failed to get message from data for reporting.", e);
 		}
 	}
 
@@ -77,5 +80,17 @@ public class DSyncReporting {
 
 	public void reportNotSendingDataDueToExcludes(Interest interest) {
 		log("skipping, face.putData onInterest: " + interest.toUri());
+	}
+
+	public void reportRolodexAfterMerge(Rolodex rolodex) {
+		log("new rolodex after merge:  " + rolodex.toString());
+	}
+
+	public void reportRolodexAfterRemove(Rolodex rolodex) {
+		log("rolodex.remove(s), new rolodex: " + rolodex.toString());
+	}
+
+	public void shouldNotProcessData() {
+		log("Already received data, not re-processing.");
 	}
 }

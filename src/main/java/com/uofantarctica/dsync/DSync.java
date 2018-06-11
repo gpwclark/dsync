@@ -1,13 +1,10 @@
 package com.uofantarctica.dsync;
 
 import com.uofantarctica.dsync.model.ChatbufProto;
-import com.uofantarctica.dsync.model.ReturnStrategy;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
 import com.uofantarctica.dsync.model.ChatMessageBox;
-import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
-import com.uofantarctica.dsync.syncdata.ContactDataResponder;
-import com.uofantarctica.dsync.utils.SerializeUtils;
+import com.uofantarctica.dsync.syncdata.MyContactDataInterestResponder;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -24,7 +21,9 @@ import net.named_data.jndn.sync.ChronoSync2013;
 import net.named_data.jndn.util.Blob;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,11 +51,11 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	private final long myInitialSeqNo = -1l;
 	private final ExclusionManager exclusionManager;
 	private final boolean useExclusions = true;
-	private final ReturnStrategy strategy;
+	private boolean enabled = true;
+	boolean haveSharedNewRolodexWithoutMySyncState = false;
 
 	public DSync(OnData onData, ChronoSync2013.OnInitialized onInitialized, String theDataPrefix, String theBroadcastPrefix,
-							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName,
-							 ReturnStrategy strategy) {
+							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName) {
 		this.onData = onData;
 		this.onInitialized = onInitialized;
 		this.theDataPrefix = theDataPrefix;
@@ -64,16 +63,17 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		this.sessionNo = sessionNo;
 		this.face = face;
 		this.keyChain = keyChain;
-		this.id = UUID.randomUUID().toString();
-		this.strategy = strategy;
-		this.myProducerPrefix = theDataPrefix + "/" + id + "/" + strategy.toString();
-		this.myInitialSyncState = new SyncState(myProducerPrefix, sessionNo, myInitialSeqNo);
-		this.dSyncReporting = new DSyncReporting(screenName, id);
-		this.rolodex = new Rolodex(myInitialSyncState, dSyncReporting);
 		this.chatRoom = chatRoom;
 		this.screenName = screenName;
-		this.exclusionManager = new ExclusionManager();
 
+		this.id = UUID.randomUUID().toString();
+		this.myProducerPrefix = theDataPrefix + "/" + id;
+
+		this.myInitialSyncState = new SyncState(myProducerPrefix, sessionNo, myInitialSeqNo);
+		this.dSyncReporting = new DSyncReporting(screenName, id);
+
+		this.exclusionManager = new ExclusionManager();
+		this.rolodex = new Rolodex(myInitialSyncState, this, onData, dSyncReporting);
 		this.outbox = new ChatMessageBox(chatRoom, screenName, myInitialSyncState);
 
 		registerBroadcastPrefix();
@@ -84,6 +84,12 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	public void publishNextMessage(long seqNo, String messageType, String message, double time) {
 		ChatbufProto.ChatMessage.ChatMessageType actualMessageType = getActualMessageTypeFromString(messageType);
 		outbox.publishNextMessage(seqNo, actualMessageType, message, time);
+	}
+
+
+	public void shutdown() {
+		enabled = false;
+		rolodex.removeSelf(myInitialSyncState);
 	}
 
 	private ChatbufProto.ChatMessage.ChatMessageType getActualMessageTypeFromString(String messageType) {
@@ -106,7 +112,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private void registerDataPrefix() {
 		try {
-			ContactDataResponder cdr = new ContactDataResponder(outbox, dSyncReporting);
+			MyContactDataInterestResponder cdr = new MyContactDataInterestResponder(outbox, dSyncReporting);
 		face.registerPrefix(new Name(myProducerPrefix),
 			(OnInterestCallback) cdr,
 			(OnRegisterFailed)cdr,
@@ -128,14 +134,6 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		}
 		interest.setInterestLifetimeMilliseconds(lifetime);
 		expressInterest(interest, this, this);
-	}
-
-	public void expressInterestInDataSuffix(SyncState s) {
-		Name name = SyncState.makeSyncStateName(s);
-		Interest interest = new Interest(name);
-		interest.setInterestLifetimeMilliseconds(lifetime);
-		ContactDataReceiver cdp = new ContactDataReceiver(this, onData, s, dSyncReporting);
-		expressInterest(interest, cdp, cdp);
 	}
 
 	//TODO i think we want some sort of intelligent backoff here and around register prefix.
@@ -160,12 +158,18 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 			onInitialized.onInitialized();
 		}
 		catch(Exception e) {
-			log.log(Level.SEVERE, "Error thrown in onInitialized.");
+			log.log(Level.SEVERE, "Error thrown in onInitialized.", e);
 		}
 	}
 
 	@Override
 	public void onInterest(Name prefix, Interest interest, Face face, long interestFilterId, InterestFilter filter) {
+		if (!enabled  && haveSharedNewRolodexWithoutMySyncState) {
+			return;
+		}
+		else if (!haveSharedNewRolodexWithoutMySyncState) {
+			haveSharedNewRolodexWithoutMySyncState = true;
+		}
 		if (!rolodex.matchesCurrentRolodex(interest)) {
 			dSyncReporting.onInterestDoesNotMatchRolodex(interest);
 			sendRolodex(interest);
@@ -196,6 +200,41 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	@Override
 	public void onData(Interest interest, Data data) {
+		if (!enabled) {
+			return;
+		}
+		/*
+		if (shouldNotProcessData(data)) {
+			dSyncReporting.shouldNotProcessData();
+		}
+		else {
+		*/
+			processData(interest, data);
+		//}
+	}
+
+	private final Set<String> receivedData = new HashSet<>();
+	private boolean shouldNotProcessData(Data data) {
+		Name.Component comp = null;
+		try {
+			comp = ExclusionManager.getDataHash(data);
+		} catch (Exception e) {
+			log.log(Level.SEVERE, "Failed to get data hash.", e);
+			return false;
+		}
+		String dataHash = comp.toEscapedString();
+		boolean shouldNotProcessData;
+		if (receivedData.contains(dataHash)){
+			shouldNotProcessData = true;
+		}
+		else {
+			shouldNotProcessData = false;
+			receivedData.add(dataHash);
+		}
+		return shouldNotProcessData;
+	}
+
+	private void processData(Interest interest, Data data) {
 		if (useExclusions) {
 			exclusionManager.recordInterestOnData(interest, data);
 		}
@@ -203,10 +242,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		try {
 			byte[] rolodexSer = content.getImmutableArray();
 			Rolodex otherRolodex = Rolodex.deserialize(rolodexSer);
-			List<SyncState> newContacts = rolodex.merge(otherRolodex);
-			for (SyncState s : newContacts) {
-				onContactAdded(s);
-			}
+			rolodex.merge(otherRolodex);
 		} catch (Exception e) {
 			log.log(Level.SEVERE, "Error merging rolodexes.", e);
 		}
@@ -215,11 +251,17 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	@Override
 	public void onTimeout(Interest interest) {
+		if (!enabled) {
+			return;
+		}
 		expressInterestInRolodex();
 	}
 
-	public void onContactAdded(SyncState s) {
-		dSyncReporting.onContactAdded(s);
-		expressInterestInDataSuffix(s);
+	public boolean onContactRemoved(SyncState syncState) {
+		return rolodex.remove(syncState);
+	}
+
+	public double getLifetime() {
+		return lifetime;
 	}
 }

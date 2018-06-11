@@ -2,6 +2,7 @@ package com.uofantarctica.dsync.syncdata;
 
 import com.uofantarctica.dsync.DSyncReporting;
 import com.uofantarctica.dsync.model.ChatMessageBox;
+import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -15,14 +16,14 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ContactDataResponder implements OnInterestCallback, OnRegisterFailed, OnRegisterSuccess {
-	private static final String TAG = ContactDataResponder.class.getName();
+public class MyContactDataInterestResponder implements OnInterestCallback, OnRegisterFailed, OnRegisterSuccess {
+	private static final String TAG = MyContactDataInterestResponder.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
 	private final ChatMessageBox outbox;
 	private final DSyncReporting dSyncReporting;
 
-	public ContactDataResponder(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
+	public MyContactDataInterestResponder(ChatMessageBox outbox, DSyncReporting dSyncReporting) {
 		this.outbox = outbox;
 		this.dSyncReporting = dSyncReporting;
 	}
@@ -35,7 +36,7 @@ public class ContactDataResponder implements OnInterestCallback, OnRegisterFaile
 			try {
 				face.putData(data);
 			} catch (IOException e) {
-				log.log(Level.SEVERE, "Failed to place message on interest." + interest.toUri());
+				log.log(Level.SEVERE, "Failed to place message on interest." + interest.toUri(), e);
 			}
 		}
 		else {

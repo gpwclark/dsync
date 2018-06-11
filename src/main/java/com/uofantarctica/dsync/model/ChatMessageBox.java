@@ -36,8 +36,7 @@ public class ChatMessageBox {
 		ChatbufProto.ChatMessageList.Builder builder = ChatbufProto.ChatMessageList.newBuilder();
 		//If their request is lower than the current seqNo, we want to give them
 		//up to that.
-		ReturnStrategy strategy = syncState.getReturnStrategy();
-		buildMessageList(strategy, builder, syncState);
+		buildMessageList(builder, syncState);
 
 		ChatbufProto.ChatMessageList messageList = builder.build();
 		byte[] array = messageList.toByteArray();
@@ -46,19 +45,8 @@ public class ChatMessageBox {
 		return data;
 	}
 
-	private void buildMessageList(ReturnStrategy strategy, ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
-		switch (strategy) {
-			case ALL: fetchMessagesFromRequestedToEnd(builder, syncState);
-								break;
-			case MOST_RECENT: fetchMostRecent(builder);
-								break;
-		}
-	}
-
-	private void fetchMostRecent(ChatbufProto.ChatMessageList.Builder builder) {
-		long mostRecent = mySyncState.getSeq();
-		builder.addMessageList(getMessage(mostRecent));
-		builder.setHighestSeq(mostRecent);
+	private void buildMessageList(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+			fetchMessagesFromRequestedToEnd(builder, syncState);
 	}
 
 	private void fetchMessagesFromRequestedToEnd(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
