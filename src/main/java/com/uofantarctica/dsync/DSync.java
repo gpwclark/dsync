@@ -125,7 +125,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		}
 	}
 
-	public void expressInterestInRolodex() {
+	private void expressInterestInRolodex() {
 		Name name = new Name(theBroadcastPrefix);
 		name.append(rolodex.getRolodexHashString());
 		Interest interest = new Interest(name);
@@ -136,8 +136,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		expressInterest(interest, this, this);
 	}
 
-	//TODO i think we want some sort of intelligent backoff here and around register prefix.
-	public void expressInterest(Interest interest, OnData onData, OnTimeout onTimeout) {
+	private void expressInterest(Interest interest, OnData onData, OnTimeout onTimeout) {
 		try {
 			face.expressInterest(interest, onData, onTimeout);
 		} catch (IOException e) {
@@ -203,35 +202,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		if (!enabled) {
 			return;
 		}
-		/*
-		if (shouldNotProcessData(data)) {
-			dSyncReporting.shouldNotProcessData();
-		}
-		else {
-		*/
-			processData(interest, data);
-		//}
-	}
-
-	private final Set<String> receivedData = new HashSet<>();
-	private boolean shouldNotProcessData(Data data) {
-		Name.Component comp = null;
-		try {
-			comp = ExclusionManager.getDataHash(data);
-		} catch (Exception e) {
-			log.log(Level.SEVERE, "Failed to get data hash.", e);
-			return false;
-		}
-		String dataHash = comp.toEscapedString();
-		boolean shouldNotProcessData;
-		if (receivedData.contains(dataHash)){
-			shouldNotProcessData = true;
-		}
-		else {
-			shouldNotProcessData = false;
-			receivedData.add(dataHash);
-		}
-		return shouldNotProcessData;
+        processData(interest, data);
 	}
 
 	private void processData(Interest interest, Data data) {
