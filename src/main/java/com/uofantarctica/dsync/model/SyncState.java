@@ -4,7 +4,10 @@ import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
 
 import java.io.Serializable;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class SyncState implements Serializable {
@@ -22,10 +25,7 @@ public class SyncState implements Serializable {
 	}
 
 	public SyncState(Interest interest) {
-		this(interest.getName());
-	}
-
-	public SyncState(Name name) {
+		Name name = interest.getName();
 		Name subName = name.getSubName(0, name.size() - 2);
 		setProducerPrefix(subName.toUri());
 		setSession(Long.valueOf(name.get(-2).toEscapedString()));
@@ -36,16 +36,6 @@ public class SyncState implements Serializable {
 		Name name = new Name(s.getProducerPrefix())
 			.append(Long.toString(s.getSession()))
 			.append(Long.toString(s.getSeq()));
-		return name;
-	}
-
-	public Interest getInterest() {
-		Name name = makeSyncStateName(this);
-		return new Interest(name);
-	}
-
-	public Name getName() {
-		Name name = makeSyncStateName(this);
 		return name;
 	}
 
@@ -61,6 +51,12 @@ public class SyncState implements Serializable {
 	public Long getNextSeq() {
 		this.incSyncState();
 		return this.getSeq();
+	}
+
+	public ReturnStrategy getReturnStrategy() {
+		Name name = new Name(producerPrefix);
+		Name.Component comp = name.get(-1);
+		return ReturnStrategy.valueOf(comp.toEscapedString());
 	}
 
 	public String getProducerPrefix() {

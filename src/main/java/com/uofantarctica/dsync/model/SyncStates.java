@@ -1,7 +1,6 @@
 package com.uofantarctica.dsync.model;
 
 import com.sun.corba.se.impl.orbutil.concurrent.Sync;
-import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
 
 import java.io.Serializable;
 import java.security.MessageDigest;
@@ -24,20 +23,14 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 
 	private final List<SyncState> syncStateList = new ArrayList<>();
 	private final Map<String, SyncState> syncStateMap = new HashMap<>();
-	private transient final Map<String, ContactDataReceiver> cdrMap = new HashMap<>();
 
 	public SyncStates(SyncState s) {
-		this.initialAdd(s);
-	}
-	public void initialAdd(SyncState s) {
-		syncStateList.add(s);
-		syncStateMap.put(s.getProducerPrefix(), s);
+		this.add(s);
 	}
 
-	public void add(SyncState s, ContactDataReceiver cdr) {
+	public void add(SyncState s) {
 		syncStateList.add(s);
 		syncStateMap.put(s.getProducerPrefix(), s);
-		cdrMap.put(s.getProducerPrefix(), cdr);
 	}
 
 	public int size() {
@@ -87,38 +80,5 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 		return "SyncStates{" +
 			", syncStateList=" + syncStateList +
 			'}';
-	}
-
-	public boolean removeSelf(SyncState myInitialSyncState) {
-		SyncState syncState = syncStateMap.get(myInitialSyncState.getProducerPrefix());
-		if (syncState == null) {
-			log.log(Level.SEVERE, "sync state for self was not found in map, should have been found.");
-			return false;
-		}
-		boolean mapRemove = syncStateMap.remove(syncState.getProducerPrefix(), syncState);
-		boolean listRemove = syncStateList.remove(syncState);
-		return mapRemove && listRemove;
-	}
-
-	public boolean remove(SyncState syncStateKey) {
-		SyncState syncState = syncStateMap.get(syncStateKey.getProducerPrefix());
-		if (syncState == null) {
-			log.log(Level.SEVERE, "sync state was not found in map, should have been found.");
-			return false;
-		}
-		boolean mapRemove = syncStateMap.remove(syncState.getProducerPrefix(), syncState);
-		boolean listRemove = syncStateList.remove(syncState);
-		ContactDataReceiver cdr = cdrMap.get(syncState.getProducerPrefix());
-		cdr.stopExpressingInterestInContactData();
-		boolean cdrRemoved = cdrMap.remove(syncState.getProducerPrefix(), cdr);
-		return mapRemove && listRemove && cdrRemoved;
-	}
-
-	public ContactDataReceiver getContactDataReceiver(SyncState s) throws Exception {
-		ContactDataReceiver cdr = cdrMap.get(s.getProducerPrefix());
-		if (cdr == null)
-			throw new Exception("No such contact.");
-
-		return cdr;
 	}
 }

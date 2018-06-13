@@ -1,13 +1,10 @@
 package com.uofantarctica.dsync.model;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.uofantarctica.dsync.DSync;
 import com.uofantarctica.dsync.DSyncReporting;
-import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
-import net.named_data.jndn.Data;
+import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
-import net.named_data.jndn.OnData;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -25,22 +22,11 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	private static final Logger log = Logger.getLogger(TAG);
 
 	private SyncStates syncStates;
-	private transient DSync dSync;
-	private transient OnData onData;
 	private transient DSyncReporting dSyncReporting;
 
-	public Rolodex(SyncState myInitialSyncState, DSync dSync, OnData onData,
-								 DSyncReporting dSyncReporting) {
+	public Rolodex(SyncState myInitialSyncState, DSyncReporting dSyncReporting) {
 		syncStates = new SyncStates(myInitialSyncState);
-		this.dSync = dSync;
-		this.onData = onData;
 		this.dSyncReporting = dSyncReporting;
-	}
-
-	public Rolodex(SyncState syncState) {
-		syncStates = new SyncStates(syncState);
-		this.onData = dummyOnData;
-		this.dSyncReporting = new DSyncReporting("foreignRolodex", "foreignRolodex");
 	}
 
 	public boolean matchesCurrentRolodex(Interest interest) {
@@ -55,25 +41,8 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	}
 
 	public void add(SyncState s) {
-		ContactDataReceiver cdr = createContactDataReceiver(s);
-		syncStates.add(s, cdr);
+		syncStates.add(s);
 		dSyncReporting.onContactAdditionInRolodex(s, this.hashCode());
-	}
-
-	private ContactDataReceiver createContactDataReceiver(SyncState s) {
-		return new ContactDataReceiver(dSync, onData, s, dSyncReporting);
-	}
-
-	public boolean remove(SyncState syncState) {
-		boolean removed = syncStates.remove(syncState);
-		dSyncReporting.reportRolodexAfterRemove(this);
-		return removed;
-	}
-
-	public boolean removeSelf(SyncState myInitialSyncState) {
-		boolean removed = syncStates.removeSelf(myInitialSyncState);
-		dSyncReporting.reportRolodexAfterRemove(this);
-		return removed;
 	}
 
 	public static Rolodex deserialize(byte[] rolodexSer) throws Exception {
@@ -87,7 +56,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 			for (int i = 0; i < messages.getSsCount(); i++) {
 				SyncState syncState = convertToAppSyncState(messages.getSs(i));
 				if (rol == null)
-					rol = new Rolodex(syncState);
+					rol = new Rolodex(syncState, new DSyncReporting("receivedRolodex", "n/a"));
 				else
 					rol.add(syncState);
 			}
@@ -127,7 +96,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 			.setSession(session);
 	}
 
-	public void merge(Rolodex newRolodex) {
+	public List<SyncState> merge(Rolodex newRolodex) {
 		List<SyncState> newContacts = new ArrayList<>();
 		for (SyncState s : newRolodex) {
 			if (!syncStates.contains(s)) {
@@ -136,26 +105,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 				newContacts.add(s);
 			}
 		}
-		dSyncReporting.reportRolodexAfterMerge(this);
-		expressInterestInDataOfNewContact(newContacts);
-	}
-
-	public void expressInterestInDataOfNewContact(List<SyncState> newContacts) {
-		for (SyncState s : newContacts) {
-			Interest interest = s.getInterest();
-			interest.setInterestLifetimeMilliseconds(dSync.getLifetime());
-			ContactDataReceiver cdr;
-			try {
-				cdr = getContactDataReceiver(s);
-				dSync.expressInterest(interest, cdr, cdr);
-			} catch (Exception e) {
-				log.log(Level.SEVERE, "Failed to place interest in new contact: " + s.toString(), e);
-			}
-		}
-	}
-
-	private ContactDataReceiver getContactDataReceiver(SyncState s) throws Exception {
-		return syncStates.getContactDataReceiver(s);
+		return newContacts;
 	}
 
 	@Override
@@ -200,13 +150,5 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 			"syncStates=" + syncStates +
 			'}';
 	}
-
-	private static class DummyOnData implements OnData {
-		public final void
-		onData(Interest interest, Data data) {
-			log.log(Level.INFO, "Dummy on data fired.");
-		}
-	}
-	public final static OnData dummyOnData = new DummyOnData();
 }
 

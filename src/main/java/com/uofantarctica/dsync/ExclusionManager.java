@@ -42,7 +42,7 @@ public class ExclusionManager {
 		}
 	}
 
-	public static Name.Component getDataHash(Data data) throws Exception {
+	private Name.Component getDataHash(Data data) throws Exception {
 		try {
 			Name.Component newExcludeComp = data.getFullName().get(-1);
 			return newExcludeComp;
