@@ -3,8 +3,8 @@ package com.uofantarctica.dsync.syncdata;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uofantarctica.dsync.DSync;
 import com.uofantarctica.dsync.DSyncReporting;
-import com.uofantarctica.dsync.model.ChatMessageBox;
 import com.uofantarctica.dsync.model.ChatbufProto;
+import com.uofantarctica.dsync.model.MessageOutbox;
 import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
@@ -71,7 +71,7 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 			for(ChatbufProto.ChatMessage m : messages.getMessageListList()) {
 				Data newData = new Data(data.getName());
 				ChatbufProto.ChatMessage.Builder builder = ChatbufProto.ChatMessage.newBuilder();
-				ChatMessageBox.buildMessage(builder, m.getFrom(), m.getTo(), m.getType(), m.getData(), m.getTimestamp());
+				MessageOutbox.buildMessage(builder, m.getFrom(), m.getTo(), m.getType(), m.getData(), m.getTimestamp());
 				newData.setContent(new Blob(builder.build().toByteArray()));
 				onData.onData(interest, newData);
 			}

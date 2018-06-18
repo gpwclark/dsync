@@ -12,7 +12,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-public class SyncStatesTest {
+public class SyncAdapterStatesTest {
 	SyncState tripletSyncState1;
 	SyncState tripletSyncState2;
 	SyncState tripletSyncState3;
@@ -35,9 +35,9 @@ public class SyncStatesTest {
 	@BeforeEach
 	void setUp() {
 		String dataPrefix = "/data/prefix";
-		producerPrefix1 = dataPrefix + "/an-id/" + ReturnStrategy.ALL.toString();
-		producerPrefix2 = dataPrefix + "/other-id/" + ReturnStrategy.MOST_RECENT.toString();
-		producerPrefix3 = dataPrefix + "/yet-another-id/" + ReturnStrategy.MOST_RECENT.toString();
+		producerPrefix1 = dataPrefix + "/an-id/";
+		producerPrefix2 = dataPrefix + "/other-id/";
+		producerPrefix3 = dataPrefix + "/yet-another-id/";
 		seq1 = session1 = 9823l;
 		seq2 = session2 = 923l;
 		seq3 = session3 = 983l;
@@ -78,12 +78,6 @@ public class SyncStatesTest {
 		assertEquals(uniqSession, uniqueSyncState.getSession());
 		assertEquals(tripletSyncState2.getProducerPrefix(), tripletSyncState3.getProducerPrefix());
 		assertEquals(producerPrefix1, tripletSyncState3.getProducerPrefix());
-	}
-
-	@Test
-	void parsingReturnStrategies() {
-		assertEquals(tripletSyncState1.getReturnStrategy(), ReturnStrategy.ALL);
-		assertEquals(uniqueSyncState.getReturnStrategy(), ReturnStrategy.MOST_RECENT);
 	}
 
 	@Test

@@ -1,13 +1,11 @@
 package com.uofantarctica.dsync;
 
 import com.uofantarctica.dsync.model.ChatbufProto;
-import com.uofantarctica.dsync.model.ReturnStrategy;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
-import com.uofantarctica.dsync.model.ChatMessageBox;
+import com.uofantarctica.dsync.model.MessageOutbox;
 import com.uofantarctica.dsync.syncdata.ContactDataReceiver;
 import com.uofantarctica.dsync.syncdata.ContactDataResponder;
-import com.uofantarctica.dsync.utils.SerializeUtils;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Face;
 import net.named_data.jndn.Interest;
@@ -29,61 +27,85 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterFailed, OnRegisterSuccess {
+import static net.named_data.jndn.util.Common.getNowMilliseconds;
+
+public class DSync implements OnInterestCallback, OnData, OnTimeout,
+	OnRegisterFailed, OnRegisterSuccess, SyncAdapter {
 	private static final String TAG = DSync.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 
-	private final OnData onData;
-	private final ChronoSync2013.OnInitialized onInitialized;
-	private final String theDataPrefix;
-	private final String myProducerPrefix;
-	private final String theBroadcastPrefix;
+	private ChronoSync2013.OnInitialized onInitialized;
 	private final long sessionNo;
 	private final Face face;
 	private final KeyChain keyChain;
 	private final String id;
-	private final Rolodex rolodex;
 	private static final double lifetime = 5000d;
-	private final ChatMessageBox outbox;
-	private final String chatRoom;
-	private final String screenName;
-	private final DSyncReporting dSyncReporting;
-	private final SyncState myInitialSyncState;
 	private final long myInitialSeqNo = -1l;
-	private final ExclusionManager exclusionManager;
 	private final boolean useExclusions = true;
-	private final ReturnStrategy strategy;
+	private final String hubPrefix;
+	private final String baseBroadcastPrefix;
 
-	public DSync(OnData onData, ChronoSync2013.OnInitialized onInitialized, String theDataPrefix, String theBroadcastPrefix,
-							 long sessionNo, Face face, KeyChain keyChain, String chatRoom, String screenName,
-							 ReturnStrategy strategy) {
-		this.onData = onData;
-		this.onInitialized = onInitialized;
-		this.theDataPrefix = theDataPrefix;
-		this.theBroadcastPrefix = theBroadcastPrefix;
-		this.sessionNo = sessionNo;
+	private OnData onData;
+	private String broadcastPrefix;
+	private String dataPrefix;
+	private String myProducerPrefix;
+	private Rolodex rolodex;
+	private MessageOutbox outbox;
+	private String dataSetName;
+	private String screenName;
+	private DSyncReporting dSyncReporting;
+	private SyncState mySyncState;
+	private ExclusionManager exclusionManager;
+
+	public DSync(String hubPrefix, String baseBroadcastPrefix, Face face, KeyChain keyChain) {
+		this.hubPrefix = hubPrefix;
+		this.baseBroadcastPrefix = baseBroadcastPrefix;
+		this.sessionNo = (int)Math.round(getNowMilliseconds() / 1000.0);
 		this.face = face;
 		this.keyChain = keyChain;
 		this.id = UUID.randomUUID().toString();
-		this.strategy = strategy;
-		this.myProducerPrefix = theDataPrefix + "/" + id + "/" + strategy.toString();
-		this.myInitialSyncState = new SyncState(myProducerPrefix, sessionNo, myInitialSeqNo);
-		this.dSyncReporting = new DSyncReporting(screenName, id);
-		this.rolodex = new Rolodex(myInitialSyncState, dSyncReporting);
-		this.chatRoom = chatRoom;
-		this.screenName = screenName;
-		this.exclusionManager = new ExclusionManager();
+	}
 
-		this.outbox = new ChatMessageBox(chatRoom, screenName, myInitialSyncState);
+	public void initSyncForDataSet(OnData onData, ChronoSync2013.OnInitialized onInitialized, String dataSetName, String
+		screenName) {
+		this.onData = onData;
+		this.onInitialized = onInitialized;
+		this.dataSetName = dataSetName;
+		this.screenName = screenName;
+		this.dataPrefix = hubPrefix + "/" + dataSetName;
+		this.broadcastPrefix = baseBroadcastPrefix + "/" + dataSetName;
+		this.myProducerPrefix = dataPrefix + "/" + id + "/";
+		this.mySyncState = new SyncState(myProducerPrefix, sessionNo, myInitialSeqNo);
+		this.dSyncReporting = new DSyncReporting(screenName, id);
+		this.rolodex = new Rolodex(mySyncState, dSyncReporting);
+		this.exclusionManager = new ExclusionManager();
+		this.outbox = new MessageOutbox(dataSetName, screenName, mySyncState);
 
 		registerBroadcastPrefix();
 		registerDataPrefix();
 		expressInterestInRolodex();
 	}
 
+	public long getSessionNo() {
+		return sessionNo;
+	}
+
+	public long getSequenceNo() {
+		return mySyncState.getSeq();
+	}
+
 	public void publishNextMessage(long seqNo, String messageType, String message, double time) {
 		ChatbufProto.ChatMessage.ChatMessageType actualMessageType = getActualMessageTypeFromString(messageType);
 		outbox.publishNextMessage(seqNo, actualMessageType, message, time);
+	}
+
+//	@Override
+	public long getProducerSequenceNo(String prefix_, long sessionNo_) {
+		return mySyncState.getSeq();
+	}
+
+//	@Override
+	public void publishNextSequenceNo() {
 	}
 
 	private ChatbufProto.ChatMessage.ChatMessageType getActualMessageTypeFromString(String messageType) {
@@ -92,11 +114,11 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private void registerBroadcastPrefix() {
 		try {
-			face.registerPrefix(new Name(theBroadcastPrefix),
+			face.registerPrefix(new Name(broadcastPrefix),
 				(OnInterestCallback) this,
 				(OnRegisterFailed)this,
 				(OnRegisterSuccess)this);
-			dSyncReporting.onRegisterBroadcastPrefix(theBroadcastPrefix);
+			dSyncReporting.onRegisterBroadcastPrefix(broadcastPrefix);
 		} catch (IOException e) {
 			log.log(Level.SEVERE, "Failed to register prefix.", e);
 		} catch (SecurityException e) {
@@ -120,7 +142,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	}
 
 	public void expressInterestInRolodex() {
-		Name name = new Name(theBroadcastPrefix);
+		Name name = new Name(broadcastPrefix);
 		name.append(rolodex.getRolodexHashString());
 		Interest interest = new Interest(name);
 		if (useExclusions) {

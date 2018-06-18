@@ -1,7 +1,5 @@
 package com.uofantarctica.dsync.model;
 
-import com.sun.corba.se.impl.orbutil.concurrent.Sync;
-
 import java.io.Serializable;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

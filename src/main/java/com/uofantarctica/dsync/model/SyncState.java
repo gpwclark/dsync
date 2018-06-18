@@ -53,12 +53,6 @@ public class SyncState implements Serializable {
 		return this.getSeq();
 	}
 
-	public ReturnStrategy getReturnStrategy() {
-		Name name = new Name(producerPrefix);
-		Name.Component comp = name.get(-1);
-		return ReturnStrategy.valueOf(comp.toEscapedString());
-	}
-
 	public String getProducerPrefix() {
 		return producerPrefix;
 	}

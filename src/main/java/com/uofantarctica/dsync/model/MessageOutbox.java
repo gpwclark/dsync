@@ -4,22 +4,19 @@ import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.util.Blob;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-public class ChatMessageBox {
-	private static final String TAG = ChatMessageBox.class.getName();
+public class MessageOutbox {
+	private static final String TAG = MessageOutbox.class.getName();
 	private static final Logger log = Logger.getLogger(TAG);
 	private final Map<Long, ChatbufProto.ChatMessage> myMessages = new HashMap<>();
 	private final String chatRoom;
 	private final String screenName;
 	private final SyncState mySyncState;
 
-	public ChatMessageBox(String chatRoom, String screenName, SyncState mySyncState) {
+	public MessageOutbox(String chatRoom, String screenName, SyncState mySyncState) {
 		this.chatRoom = chatRoom;
 		this.screenName = screenName;
 		this.mySyncState = mySyncState;
@@ -36,8 +33,7 @@ public class ChatMessageBox {
 		ChatbufProto.ChatMessageList.Builder builder = ChatbufProto.ChatMessageList.newBuilder();
 		//If their request is lower than the current seqNo, we want to give them
 		//up to that.
-		ReturnStrategy strategy = syncState.getReturnStrategy();
-		buildMessageList(strategy, builder, syncState);
+		buildMessageList(builder, syncState);
 
 		ChatbufProto.ChatMessageList messageList = builder.build();
 		byte[] array = messageList.toByteArray();
@@ -46,22 +42,19 @@ public class ChatMessageBox {
 		return data;
 	}
 
-	private void buildMessageList(ReturnStrategy strategy, ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
-		switch (strategy) {
-			case ALL: fetchMessagesFromRequestedToEnd(builder, syncState);
-								break;
-			case MOST_RECENT: fetchMostRecent(builder);
-								break;
-		}
+	private void buildMessageList(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+        fetchFromRequestedToEnd(builder, syncState);
 	}
 
+	//TODO the idea that there is something other than fetchFromRequestedToEnd is
+	// important even if it has not yet been implemented.
 	private void fetchMostRecent(ChatbufProto.ChatMessageList.Builder builder) {
 		long mostRecent = mySyncState.getSeq();
 		builder.addMessageList(getMessage(mostRecent));
 		builder.setHighestSeq(mostRecent);
 	}
 
-	private void fetchMessagesFromRequestedToEnd(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
+	private void fetchFromRequestedToEnd(ChatbufProto.ChatMessageList.Builder builder, SyncState syncState) {
 		long reqSeq = syncState.getSeq();
 		do {
 			builder.addMessageList(getMessage(reqSeq));
@@ -106,24 +99,4 @@ public class ChatMessageBox {
 	private void publishNextMessage(ChatbufProto.ChatMessage message) {
 		myMessages.put(mySyncState.getNextSeq(), message);
 	}
-
-	//TODO easy optimization later if necessary.
-	public List<ChatbufProto.ChatMessage> getSorted() {
-		List<SortableChatMessage> chatMessages = new ArrayList<>();
-		List<ChatbufProto.ChatMessage> chatbufMessages = new ArrayList<>();
-
-		for (int i = 0; i < myMessages.size(); i++) {
-			long j = (long)i;
-			ChatbufProto.ChatMessage message = myMessages.get(j);
-			chatMessages.add(new SortableChatMessage(message));
-		}
-
-		Collections.sort(chatMessages, Collections.reverseOrder());
-
-		for (SortableChatMessage chatMessage : chatMessages) {
-			chatbufMessages.add(chatMessage.getMessage());
-		}
-		return chatbufMessages;
-	}
-
 }
