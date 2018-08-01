@@ -2,24 +2,24 @@ plugins {
     id 'java'
 }
 
-group 'com'
-version '1.0-SNAPSHOT'
-
 sourceCompatibility = 1.8
 
 apply plugin: 'maven-publish'
 
 repositories {
+    mavenLocal()
     mavenCentral()
     jcenter()
     maven { url "https://jitpack.io" }
 }
 
 dependencies {
-    testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.1.0'
-    compile 'net.named-data:jndn:0.16'
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile "net.named-data:jndn:${jndn_version}"
     compile 'org.projectlombok:lombok:1.16.22'
     compile 'com.google.protobuf:protobuf-java:2.6.1'
+    implementation "org.slf4j:slf4j-api:${slf4j_version}"
+    implementation "org.slf4j:slf4j-log4j12:${slf4j_version}"
 }
 
 publishing {
@@ -27,7 +27,7 @@ publishing {
         maven(MavenPublication) {
             groupId 'com.uofantarctica'
             artifactId 'dsync'
-            version '1.3'
+            version '2.0.1'
 
             from components.java
         }

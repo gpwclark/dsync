@@ -2,7 +2,7 @@ package com.uofantarctica.dsync.model;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uofantarctica.dsync.DSyncReporting;
-import com.uofantarctica.dsync.utils.SerializeUtils;
+import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
 import net.named_data.jndn.Name;
 
@@ -14,12 +14,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import net.named_data.jndn.util.Blob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import share.hoard.protocols.SyncStateProto;
+import static com.uofantarctica.dsync.DSync.DSYNC;
 
 public class Rolodex implements Serializable, Iterable<SyncState> {
-	private static final String TAG = Rolodex.class.getName();
-	private static final Logger log = Logger.getLogger(TAG);
+	private static final Logger log = LoggerFactory.getLogger(Rolodex.class);
 
 	private SyncStates syncStates;
 	private transient DSyncReporting dSyncReporting;
@@ -27,6 +29,11 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	public Rolodex(SyncState myInitialSyncState, DSyncReporting dSyncReporting) {
 		syncStates = new SyncStates(myInitialSyncState);
 		this.dSyncReporting = dSyncReporting;
+	}
+
+	public Rolodex(String screenName, String id) {
+		this.dSyncReporting = new DSyncReporting(screenName, id);
+		syncStates = new SyncStates();
 	}
 
 	public boolean matchesCurrentRolodex(Interest interest) {
@@ -79,24 +86,25 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 		SyncStateProto.SyncStateMsg.Builder builder = SyncStateProto.SyncStateMsg.newBuilder();
 		for (SyncState syncState : syncStates) {
 			addMessage(builder,
-				(String) syncState.getProducerPrefix(),
-				SyncStateProto.SyncState.ActionType.UPDATE,
-				(Long) syncState.getSeq(),
-				(Long) syncState.getSession());
+					(String) syncState.getProducerPrefix(),
+					SyncStateProto.SyncState.ActionType.UPDATE,
+					(Long) syncState.getSeq(),
+					(Long) syncState.getSession());
 		}
+		builder.setProtocol(DSYNC);
 		return builder.build().toByteArray();
 	}
 
 	private void addMessage(SyncStateProto.SyncStateMsg.Builder builder, String producerPrefix,
-													SyncStateProto.SyncState.ActionType update, Long seq, Long session) {
+	                        SyncStateProto.SyncState.ActionType update, Long seq, Long session) {
 		builder.addSsBuilder()
-			.setName(producerPrefix)
-			.setType(update)
-			.getSeqnoBuilder().setSeq(seq)
-			.setSession(session);
+				.setName(producerPrefix)
+				.setType(update)
+				.getSeqnoBuilder().setSeq(seq)
+				.setSession(session);
 	}
 
-	public List<SyncState> merge(Rolodex newRolodex) {
+	private List<SyncState> merge(Rolodex newRolodex) {
 		List<SyncState> newContacts = new ArrayList<>();
 		for (SyncState s : newRolodex) {
 			if (!syncStates.contains(s)) {
@@ -147,8 +155,21 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 	@Override
 	public String toString() {
 		return "Rolodex{" +
-			"syncStates=" + syncStates +
-			'}';
+				"syncStates=" + syncStates +
+				'}';
+	}
+
+	public List<SyncState> mergeContacts(Data data) {
+		List<SyncState> newContacts = new ArrayList<>();
+		try {
+			Blob content = data.getContent();
+			byte[] rolodexSer = content.getImmutableArray();
+			Rolodex otherRolodex = Rolodex.deserialize(rolodexSer);
+			newContacts = merge(otherRolodex);
+		} catch (Exception e) {
+			log.error("Error merging rolodexes.", e);
+		}
+		return newContacts;
 	}
 }
 

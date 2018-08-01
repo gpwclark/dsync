@@ -1,28 +1,27 @@
 package com.uofantarctica.dsync.model;
 
-import com.sun.corba.se.impl.orbutil.concurrent.Sync;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public class SyncStates implements Serializable, Iterable<SyncState> {
-	private static final String TAG = SyncStates.class.getName();
-	private static final Logger log = Logger.getLogger(TAG);
+	private static final Logger log = LoggerFactory.getLogger(SyncStates.class);
 
 	private final List<SyncState> syncStateList = new ArrayList<>();
 	private final Map<String, SyncState> syncStateMap = new HashMap<>();
+
+	public SyncStates() {
+	}
 
 	public SyncStates(SyncState s) {
 		this.add(s);
@@ -71,7 +70,6 @@ public class SyncStates implements Serializable, Iterable<SyncState> {
 
 	@Override
 	public int hashCode() {
-
 		return Objects.hash(syncStateMap);
 	}
 

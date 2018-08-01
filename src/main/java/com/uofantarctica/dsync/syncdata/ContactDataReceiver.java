@@ -39,30 +39,31 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 	public void onData(Interest interest, Data data) {
 		try {
 			dSyncReporting.onDataPrefixOnData(interest, data);
-			incSyncStateToHighestReceived(data);
+			incSyncStateToHighestReceived(interest);
 			dsync.expressInterestInDataSuffix(s);
-			passToOnData(interest, data);
+			//passToOnData(interest, data);
+			onData.onData(interest, data);
 		}
 		catch (Exception e) {
 			log.log(Level.SEVERE, "Error in ContactDataReceiver onData");
 		}
 	}
 
-	private void incSyncStateToHighestReceived(Data data) {
-		try {
+	private void incSyncStateToHighestReceived(Interest interest) {
+			/*
 			ChatbufProto.ChatMessageList list
 				= ChatbufProto.ChatMessageList.parseFrom(data.getContent().getImmutableArray());
 			long currMax = list.getHighestSeq();
-
-			if (currMax > highestReceivedDataSegment)
+			if (currMax > highestReceivedDataSegment) {
 				highestReceivedDataSegment = currMax;
 				s.setSeq(highestReceivedDataSegment + 1);
-
-		} catch (InvalidProtocolBufferException e) {
-			log.log(Level.SEVERE, "Failed to properly increment sync state.");
-		}
+			}
+			*/
+			long seqNo = Long.parseLong(interest.getName().get(-1).toEscapedString());
+			s.setSeq(seqNo + 1);
 	}
 
+	/*
 	private void passToOnData(Interest interest, Data data) {
 		try {
 			ChatbufProto.ChatMessageList messages
@@ -82,6 +83,7 @@ public class ContactDataReceiver implements OnData, OnTimeout {
 			log.log(Level.SEVERE, "failed to pass chat message list to on data.");
 		}
 	}
+	*/
 
 	@Override
 	public void onTimeout(Interest interest) {
