@@ -17,23 +17,28 @@ public class SyncState implements Serializable {
 	private String producerPrefix;
 	private long session;
 	private long seq;
+	private ReturnStrategy strategy;
 
 	public SyncState(String producerPrefix, long session, long seq) {
 		setProducerPrefix(producerPrefix);
+		this.strategy = ReturnStrategy.EXACT;
+		setReturnStrategy(strategy);
 		setSession(session);
 		setSeq(seq);
 	}
 
 	public SyncState(Interest interest) {
 		Name name = interest.getName();
-		Name subName = name.getSubName(0, name.size() - 2);
+		Name subName = name.getSubName(0, name.size() - 3);
 		setProducerPrefix(subName.toUri());
+		setReturnStrategy(name.get(-3).toEscapedString());
 		setSession(Long.valueOf(name.get(-2).toEscapedString()));
 		setSeq(Long.valueOf(name.get(-1).toEscapedString()));
 	}
 
-	public static Name makeSyncStateName(SyncState s) {
+	public static Name makeSyncStateName(SyncState s, ReturnStrategy strategy) {
 		Name name = new Name(s.getProducerPrefix())
+			.append(strategy.toString())
 			.append(Long.toString(s.getSession()))
 			.append(Long.toString(s.getSeq()));
 		return name;
@@ -53,10 +58,16 @@ public class SyncState implements Serializable {
 		return this.getSeq();
 	}
 
+	private void setReturnStrategy(String s) {
+		setReturnStrategy(ReturnStrategy.valueOf(s));
+	}
+
+	private void setReturnStrategy(ReturnStrategy strategy) {
+		this.strategy = strategy;
+	}
+
 	public ReturnStrategy getReturnStrategy() {
-		Name name = new Name(producerPrefix);
-		Name.Component comp = name.get(-1);
-		return ReturnStrategy.valueOf(comp.toEscapedString());
+		return strategy;
 	}
 
 	public String getProducerPrefix() {

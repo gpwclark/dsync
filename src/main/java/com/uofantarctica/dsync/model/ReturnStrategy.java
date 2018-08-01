@@ -1,6 +1,7 @@
 package com.uofantarctica.dsync.model;
 
 public enum ReturnStrategy {
-	ALL,
+	//ALL,
 	MOST_RECENT,
+	EXACT,
 }
