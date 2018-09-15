@@ -22,6 +22,10 @@ dependencies {
     implementation "org.slf4j:slf4j-log4j12:${slf4j_version}"
 }
 
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+
 publishing {
     publications {
         maven(MavenPublication) {
@@ -30,6 +34,9 @@ publishing {
             version '2.0.1'
 
             from components.java
+            artifact sourceJar {
+                classifier "sources"
+            }
         }
     }
 }
