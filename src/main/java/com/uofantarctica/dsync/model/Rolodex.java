@@ -14,10 +14,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+
+import net.named_data.jndn.sync.SyncStateProto;
 import net.named_data.jndn.util.Blob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import share.hoard.protocols.SyncStateProto;
 import static com.uofantarctica.dsync.DSync.DSYNC;
 
 public class Rolodex implements Serializable, Iterable<SyncState> {
@@ -91,7 +92,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 					(Long) syncState.getSeq(),
 					(Long) syncState.getSession());
 		}
-		builder.setProtocol(DSYNC);
+		//builder.setProtocol(DSYNC);
 		return builder.build().toByteArray();
 	}
 

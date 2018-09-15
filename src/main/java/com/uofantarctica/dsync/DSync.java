@@ -33,12 +33,9 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	private final OnData onData;
 	private final ChronoSync2013.OnInitialized onInitialized;
-	private final String theDataPrefix;
 	private final String myProducerPrefix;
 	private final String theBroadcastPrefix;
-	private final long sessionNo;
 	private final Face face;
-	private final KeyChain keyChain;
 	private final String id;
 	private final Rolodex rolodex;
 	private static final double lifetime = 5000d;
@@ -58,11 +55,8 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 							 ReturnStrategy strategy) {
 		this.onData = onData;
 		this.onInitialized = onInitialized;
-		this.theDataPrefix = theDataPrefix;
 		this.theBroadcastPrefix = theBroadcastPrefix;
-		this.sessionNo = sessionNo;
 		this.face = face;
-		this.keyChain = keyChain;
 		this.id = UUID.randomUUID().toString();
 		this.strategy = strategy;
 		this.myProducerPrefix = theDataPrefix + "/" + id;
@@ -96,31 +90,30 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	}
 
 	private void registerBroadcastPrefix() {
-		try {
-			face.registerPrefix(new Name(theBroadcastPrefix),
-				(OnInterestCallback) this,
-				(OnRegisterFailed)this,
-				(OnRegisterSuccess)this);
+			registerPrefix(theBroadcastPrefix,
+					(OnInterestCallback) this,
+					(OnRegisterFailed)this,
+					(OnRegisterSuccess)this);
 			dSyncReporting.onRegisterBroadcastPrefix(theBroadcastPrefix);
-		} catch (IOException e) {
-			log.error("Failed to register prefix.", e);
-		} catch (SecurityException e) {
-			log.error("Failed to register prefix.", e);
-		}
 	}
 
 	private void registerDataPrefix() {
-		try {
-			ContactDataResponder cdr = new ContactDataResponder(outbox, dSyncReporting);
-		face.registerPrefix(new Name(myProducerPrefix),
+		ContactDataResponder cdr = new ContactDataResponder(outbox, dSyncReporting);
+		registerPrefix(myProducerPrefix,
 			(OnInterestCallback) cdr,
 			(OnRegisterFailed)cdr,
 			(OnRegisterSuccess)cdr);
 			dSyncReporting.onRegisterDataPrefix(myProducerPrefix);
+	}
+
+	private void registerPrefix(String prefix, OnInterestCallback onInterestCallback, OnRegisterFailed
+			onRegisterFailed, OnRegisterSuccess onRegisterSuccess) {
+		try {
+			face.registerPrefix(new Name(prefix), onInterestCallback, onRegisterFailed, onRegisterSuccess);
 		} catch (IOException e) {
-			log.error("Failed to register prefix.", e);
+			log.error("Failed to call face.registerPrefix().", e);
 		} catch (SecurityException e) {
-			log.error("Failed to register prefix.", e);
+			log.error("Failed to call face.registerPrefix().", e);
 		}
 	}
 
@@ -160,12 +153,12 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 
 	@Override
 	public void onRegisterSuccess(Name prefix, long registeredPrefixId) {
-		log.error("Registered prefix: " + prefix.toUri());
+		log.debug("Registered prefix: " + prefix.toUri());
 		try {
 			onInitialized.onInitialized();
 		}
 		catch(Exception e) {
-			log.error("Error thrown in onInitialized.");
+			log.error("Error thrown in onInitialized.", e);
 		}
 	}
 
