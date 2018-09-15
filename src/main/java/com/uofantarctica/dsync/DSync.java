@@ -1,6 +1,5 @@
 package com.uofantarctica.dsync;
 
-import com.uofantarctica.dsync.model.ChatbufProto;
 import com.uofantarctica.dsync.model.ReturnStrategy;
 import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
@@ -74,19 +73,8 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		expressInterestInRolodex();
 	}
 
-	/*
-	public void publishNextMessage(long seqNo, String messageType, String message, double time) {
-		ChatbufProto.ChatMessage.ChatMessageType actualMessageType = getActualMessageTypeFromString(messageType);
-		outbox.publishNextMessage(seqNo, actualMessageType, message, time);
-	}
-	*/
-
 	public void publishNextMessage(Data data) {
 		outbox.publishNextMessage(data);
-	}
-
-	private ChatbufProto.ChatMessage.ChatMessageType getActualMessageTypeFromString(String messageType) {
-		return ChatbufProto.ChatMessage.ChatMessageType.valueOf(messageType);
 	}
 
 	private void registerBroadcastPrefix() {
@@ -117,7 +105,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 		}
 	}
 
-	public void expressInterestInRolodex() {
+	 void expressInterestInRolodex() {
 		Name name = new Name(theBroadcastPrefix);
 		name.append(rolodex.getRolodexHashString());
 		Interest interest = new Interest(name);
@@ -139,6 +127,7 @@ public class DSync implements OnInterestCallback, OnData, OnTimeout, OnRegisterF
 	//TODO i think we want some sort of intelligent backoff here and around register prefix.
 	public void expressInterest(Interest interest, OnData onData, OnTimeout onTimeout) {
 		try {
+			dSyncReporting.reportExpressInterest(interest);
 			face.expressInterest(interest, onData, onTimeout);
 		} catch (IOException e) {
 			log.error("failed to express interest", e);

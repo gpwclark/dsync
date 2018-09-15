@@ -60,17 +60,6 @@ public class ChatMessageBox {
 		return getMessage(mostRecent);
 	}
 
-	/*
-	private void fetchMessagesFromRequestedToEnd(SyncState syncState) {
-		long reqSeq = syncState.getSeq();
-		do {
-			builder.addMessageList(getMessage(reqSeq));
-			builder.setHighestSeq(reqSeq);
-			++reqSeq;
-		} while (currRequestIsValid(reqSeq));
-	}
-	*/
-
 	private Data getMessage(long reqSeq) {
 		return myMessages.get(reqSeq);
 	}
@@ -84,34 +73,7 @@ public class ChatMessageBox {
 		return seqNo <= mySyncState.getSeq();
 	}
 
-	/*
-	public void publishNextMessage(ChatbufProto.ChatMessage.ChatMessageType messageType, String message, double time) {
-		ChatbufProto.ChatMessage.Builder builder
-			= ChatbufProto.ChatMessage.newBuilder();
-		buildMessage(builder, screenName, chatRoom, messageType, message, time);
-		publishNextMessage(builder.build());
-	}
-	*/
-
 	public void publishNextMessage(Data data) {
 		myMessages.put(mySyncState.getNextSeq(), data);
 	}
-
-	public static void buildMessage(ChatbufProto.ChatMessage.Builder builder,
-																	String screenName, String chatRoom,
-																	ChatbufProto.ChatMessage.ChatMessageType messageType,
-																	String message,
-																	double time) {
-		builder.setFrom(screenName)
-			.setTo(chatRoom)
-			.setType(messageType)
-			.setData(message)
-			.setTimestamp((int)Math.round(time / 1000.0));
-	}
-
-	/*
-	private void publishNextMessage(ChatbufProto.ChatMessage message) {
-		myMessages.put(mySyncState.getNextSeq(), message);
-	}
-	*/
 }

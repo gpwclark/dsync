@@ -1,8 +1,6 @@
 package com.uofantarctica.dsync;
 
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.uofantarctica.dsync.model.ChatbufProto;
-import com.uofantarctica.dsync.model.Rolodex;
 import com.uofantarctica.dsync.model.SyncState;
 import net.named_data.jndn.Data;
 import net.named_data.jndn.Interest;
@@ -57,13 +55,6 @@ public class DSyncReporting {
 
 	public void onDataPrefixOnData(Interest interest, Data data) {
 		log ("onDataPrefixOnData: " + interest.toUri());
-		ChatbufProto.ChatMessage message = null;
-		try {
-			message = ChatbufProto.ChatMessage.parseFrom(data.getContent().getImmutableArray());
-			log ("onDataPrefixOnData message: " + message.getData());
-		} catch (InvalidProtocolBufferException e) {
-			log.log(Level.SEVERE, "Failed to get message from data for reporting.");
-		}
 	}
 
 	public void onContactAdditionInRolodex(SyncState s, int rolodexHash) {
@@ -77,5 +68,9 @@ public class DSyncReporting {
 
 	public void reportNotSendingDataDueToExcludes(Interest interest) {
 		log("skipping, face.putData onInterest: " + interest.toUri());
+	}
+
+	public void reportExpressInterest(Interest interest) {
+		log ("reportExpressInterest: " + interest.toUri());
 	}
 }
