@@ -15,7 +15,7 @@ import java.util.Objects;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
-import net.named_data.jndn.sync.SyncStateProto;
+import com.uofantarctica.jndn.proto.SyncStateProto;
 import net.named_data.jndn.util.Blob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +92,7 @@ public class Rolodex implements Serializable, Iterable<SyncState> {
 					(Long) syncState.getSeq(),
 					(Long) syncState.getSession());
 		}
-		//builder.setProtocol(DSYNC);
+		builder.setProtocol(DSYNC);
 		return builder.build().toByteArray();
 	}
 
