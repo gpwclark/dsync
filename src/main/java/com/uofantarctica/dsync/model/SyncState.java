@@ -99,13 +99,13 @@ public class SyncState implements Serializable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		SyncState syncState = (SyncState) o;
-		return Objects.equals(producerPrefix, syncState.producerPrefix);
+		return Objects.equals(hashCode(), syncState.hashCode());
 	}
 
 	@Override
 	public int hashCode() {
 
-		return Objects.hash(producerPrefix);
+		return Objects.hash(producerPrefix, session);
 	}
 
 	@Override
